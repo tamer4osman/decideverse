@@ -1,9 +1,14 @@
 # OmniDecide WASM 1.0.0 — CI Workflow Reference
 
+> **Decideverse context:** this pipeline is now the Decideverse
+> repository pipeline — Jobs A–G verify the finished engine, Jobs H and
+> I verify the Decideverse games on every push.
+
 **Scope:** the nine-job GitHub Actions release pipeline
 (`.github/workflows/ci.yml`) — the seven Stage 1 jobs plus the two
-additive Stage 2 GameLab jobs (H, I) introduced by Stage 2.1 (coverage
-extended by Stage 2.1.1). This
+additive GameLab jobs (H, I) introduced by Stage 2.1, coverage extended
+by Stage 2.1.1 and Stage 3A (the Living Village suite runs in Job H and
+the village browser flow in Job I). This
 document explains what each job proves, how artifacts flow, how the
 fresh-build integrity comparison works, and how to obtain a hosted
 green run. The full verification results are documented in

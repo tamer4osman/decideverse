@@ -1,7 +1,31 @@
 # Changelog
 
-All notable changes to OmniDecide WASM are documented here. The format
+All notable changes to Decideverse and its engine layer
+(`omnidecide-wasm`) are documented here. The format
 is based on Keep a Changelog; versioning is semver.
+
+## [Unreleased] — Decideverse documentation alignment
+
+The engine layer (`omnidecide-wasm` 1.0.0) is finished; development
+continues on Decideverse, the platform of decision simulations built on
+it. Documentation and code comments now state this explicitly. No code
+behavior, public API, identifiers, file names, CI job or artifact names,
+or test names changed.
+
+### Changed
+- README.md leads with the Decideverse platform (shipped games: The Last
+  Detective, Living Village) and documents the engine as the finished
+  foundation; its CI section now describes the nine-job pipeline
+  (A–G engine, H–I Decideverse games) with the current structural-lint
+  total (71 checks).
+- CONTRIBUTING.md separates Decideverse rules (games, GameLab, CI) from
+  the engine rules and lists every suite CI runs.
+- RELEASE.md scopes itself to engine releases and describes the
+  nine-job pipeline; engine-scoped documents (API, BUILDING, TESTING,
+  BENCHMARKS, COMPATIBILITY, WASM-STATUS, VERIFICATION-1.0.0,
+  CI-VERIFICATION) carry an explicit Decideverse context note.
+- gamelab/docs/ROADMAP.md tracks shipped vs planned games and marks the
+  CI-wiring candidate as done (Jobs H and I).
 
 ## [Unreleased] — Stage 3A: Living Village
 

@@ -1,26 +1,33 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tamer Osman -->
 
-# Releasing OmniDecide WASM
+# Releasing OmniDecide WASM (the Decideverse engine)
+
+> **Decideverse context:** this walkthrough covers **engine releases**
+> (`omnidecide-wasm`, finished at 1.0.0). The Decideverse platform
+> itself — the games in `gamelab/` — ships through the same nine-job
+> pipeline: Jobs H and I verify the games on every push, and Job G
+> blocks the report unless they are green. Platform status:
+> `gamelab/docs/ROADMAP.md`.
 
 This repository verifies itself on GitHub Actions. Pushing the
-repository and tagging a version is enough — the seven-job pipeline
+repository and tagging a version is enough — the nine-job pipeline
 (`.github/workflows/ci.yml`) builds the kernel natively and as WASM,
-runs every acceptance suite, byte-compares the downloaded WASM
-artifact against an isolated fresh rebuild, verifies the browser
-behavior and benchmarks, and only then emits the consolidated release
-report.
+runs every acceptance suite (including the Decideverse game suites),
+byte-compares the downloaded WASM artifact against an isolated fresh
+rebuild, verifies the browser behavior and benchmarks, and only then
+emits the consolidated release report.
 
 ## 1. Publish and tag v1.0.0
 
 ```bash
-cd omnidecide-wasm-1.0.0
+cd decideverse
 
 # one-time: create the GitHub repository and connect it
 git init -b main
 git add -A
 git commit -m "OmniDecide WASM 1.0.0 — first public release"
-git remote add origin git@github.com:<your-account>/omnidecide-wasm.git
+git remote add origin https://github.com/tamer4osman/decideverse.git
 git push -u origin main
 
 # tag the release; the v* tag push triggers the full pipeline

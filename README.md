@@ -3,13 +3,15 @@
 
 <div align="center">
 
-# OmniDecide WASM
+# Decideverse
 
-**Deterministic decisions in the browser and in Node.js — the OmniDecide
-C kernel (2.0.0) compiled to WebAssembly, behind a small C interop layer
-and a dependency-free JavaScript API.**
+**Interactive decision simulations in the browser — deterministic games
+built on the finished OmniDecide engine: the OmniDecide C kernel (2.0.0)
+compiled to WebAssembly (`omnidecide-wasm` 1.0.0), behind a small C
+interop layer and a dependency-free JavaScript API.**
 
-[![version](https://img.shields.io/badge/version-1.0.0-blue)](CHANGELOG.md)
+[![engine](https://img.shields.io/badge/engine-omnidecide--wasm%201.0.0-blue)](CHANGELOG.md)
+[![games](https://img.shields.io/badge/games-2%20playable-brightgreen)](gamelab/README.md)
 [![kernel](https://img.shields.io/badge/kernel-2.0.0-blueviolet)](docs/WASM-STATUS.md)
 [![parity](https://img.shields.io/badge/native%E2%86%94WASM%20parity-40%2F40%20byte--identical-brightgreen)](docs/VERIFICATION-1.0.0.md)
 [![license](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
@@ -26,45 +28,98 @@ and a dependency-free JavaScript API.**
 
 ## Table of contents
 
-1. [What is this?](#what-is-this)
-2. [At a glance](#at-a-glance)
-3. [Architecture](#architecture)
-4. [Anatomy of a decision](#anatomy-of-a-decision)
-5. [Kernel lifecycle](#kernel-lifecycle)
-6. [The six primitives](#the-six-primitives)
-7. [Languages and text modes](#languages-and-text-modes)
-8. [Quick start](#quick-start)
-9. [Browser playground](#browser-playground)
-10. [Determinism and parity](#determinism-and-parity)
-11. [Benchmarks](#benchmarks)
-12. [CI release pipeline](#ci-release-pipeline)
-13. [Provenance and supply chain](#provenance-and-supply-chain)
-14. [Security and error model](#security-and-error-model)
-15. [Compatibility](#compatibility)
-16. [Repository layout](#repository-layout)
-17. [Documentation](#documentation)
-18. [Contributing](#contributing)
-19. [License](#license)
+1. [What is Decideverse?](#what-is-decideverse)
+2. [The platform in pictures](#the-platform-in-pictures)
+3. [Status at a glance](#status-at-a-glance)
+4. [The finished engine foundation](#the-finished-engine-foundation)
+5. [Architecture](#architecture)
+6. [Anatomy of a decision](#anatomy-of-a-decision)
+7. [Kernel lifecycle](#kernel-lifecycle)
+8. [The six primitives](#the-six-primitives)
+9. [Languages and text modes](#languages-and-text-modes)
+10. [Quick start](#quick-start)
+11. [Browser playground](#browser-playground)
+12. [Determinism and parity](#determinism-and-parity)
+13. [Benchmarks](#benchmarks)
+14. [CI verification pipeline](#ci-verification-pipeline)
+15. [Provenance and supply chain](#provenance-and-supply-chain)
+16. [Security and error model](#security-and-error-model)
+17. [Compatibility](#compatibility)
+18. [Repository layout](#repository-layout)
+19. [Documentation](#documentation)
+20. [Contributing](#contributing)
+21. [License](#license)
 
-## What is this?
+## What is Decideverse?
 
-OmniDecide WASM packages the [OmniDecide C kernel](https://github.com/tamer4osman/omnidecide-c)
-(v2.0.0, exact pinned snapshot vendored at `vendor/omnidecide-c/`) as a
-WebAssembly module so the **same compiled decision engine** runs
-unmodified in Node.js services, browser applications and bundler-based
-projects. A thin C interop layer (`src/wrappers/odk_wasm.c`) exposes
-exactly six decision primitives, and a zero-dependency UMD JavaScript
-API (`js/omnidecide.js`) makes them ergonomic from any JavaScript host.
+**Decideverse** is a collection of interactive decision simulations that
+run entirely in the browser. Every arbitration in every game is a real
+request to the **OmniDecide** engine — a deterministic, lexicon-based
+decision kernel compiled from C to WebAssembly. There is no language
+model, no mocked decision and no hidden fallback anywhere in the stack:
+what the Decision Inspector shows you is the engine's actual request and
+the kernel's actual C-authored envelope.
 
-**Decideverse** — the browser laboratory that turns this kernel into a
-collection of playable decision games — is built on top of this
-foundation and lives in [`gamelab/`](gamelab/README.md).
+Two games are playable today:
+
+- **The Last Detective** (Stage 2) — an evidence-gathering detective
+  mystery. The engine consults on hypotheses; the scenario rules decide
+  who is guilty.
+- **Living Village** (Stage 3A) — named villagers with private memory,
+  needs and relationships, stewarded over deterministic days. Daily
+  goals, disputes and the village chronicle are engine-arbitrated.
+
+**Tactical Command** (Stage 3B) is designed and comes next, followed by
+**The Last Outpost** and **Rumors & Kingdoms** — see
+[`gamelab/docs/ROADMAP.md`](gamelab/docs/ROADMAP.md). The GameLab itself
+— the shared simulation framework, workspace, Decision Inspector and
+launcher — lives in [`gamelab/`](gamelab/README.md); a planned game is
+always presented as planned, never as a fake playable.
+
+The layer picture is the state of the project in one glance — the
+foundation below is **finished and frozen**; everything above it is the
+active build:
+
+```mermaid
+flowchart TB
+    subgraph platform["Decideverse platform - in active development"]
+        launcher["GameLab launcher<br/>stage-badged game cards"]
+        detective["The Last Detective<br/>Stage 2 - shipped"]
+        village["Living Village<br/>Stage 3A - shipped"]
+        tactical["Tactical Command<br/>Stage 3B - designed"]
+        framework["Shared simulation framework<br/>workspace - Decision Inspector - replay - chronicle"]
+    end
+    subgraph foundation["Engine foundation - finished and frozen"]
+        api["js/omnidecide.js<br/>UMD API - zero dependencies"]
+        wasm["omnidecide-wasm 1.0.0<br/>dist/omnidecide.wasm - compiled C kernel"]
+    end
+    launcher --> detective
+    launcher --> village
+    launcher -.-> tactical
+    detective --> framework
+    village --> framework
+    framework --> api
+    api --> wasm
+```
+
+### The finished engine foundation
+
+The engine layer of Decideverse is **finished and verified**: the
+[OmniDecide C kernel](https://github.com/tamer4osman/omnidecide-c)
+(v2.0.0, exact pinned snapshot vendored at `vendor/omnidecide-c/`) is
+packaged as the WebAssembly module **`omnidecide-wasm` 1.0.0**, so the
+**same compiled decision engine** runs unmodified in Node.js services,
+browser applications and bundler-based projects. A thin C interop layer
+(`src/wrappers/odk_wasm.c`) exposes exactly six decision primitives, and
+a zero-dependency UMD JavaScript API (`js/omnidecide.js`) makes them
+ergonomic from any JavaScript host. The rest of this README documents
+that finished foundation; platform development happens in `gamelab/`.
 
 It is a **generic WebAssembly binding**: no downstream-specific product
 logic, no dashboard, no telemetry — any host embeds it and gets the
 kernel's deterministic behavior.
 
-Three properties define the project:
+Three properties define the engine:
 
 - **No simulation.** Every decision is produced by the real C kernel in
   WebAssembly. There is no JavaScript fallback, no mock, no cached
@@ -79,11 +134,32 @@ Three properties define the project:
   content-sensitive manifest fingerprint on every build. Clean checkouts
   build offline.
 
-## At a glance
+## The platform in pictures
+
+All captures below are fresh screenshots of the GameLab shell — the same
+UI the CI browser jobs exercise; [`gamelab/README.md`](gamelab/README.md)
+and the game design docs carry the complete set.
+
+| Simulation launcher — five games, stage-badged | The Last Detective — investigation workspace |
+|---|---|
+| ![Simulation launcher with stage-badged game cards for five Decideverse games](gamelab/docs/img/gamelab-launcher.png) | ![The Last Detective investigation workspace with engine advisories and evidence ledger](gamelab/docs/img/gamelab-workspace.png) |
+
+| Living Village — day briefing | Living Village — seven-day ending report |
+|---|---|
+| ![Living Village briefing with six named villagers and steward rules](gamelab/docs/img/gamelab-village-briefing.png) | ![Living Village ending report after seven days](gamelab/docs/img/gamelab-village-report.png) |
+
+Every screen is the real Decideverse shell over the real engine: the
+advisories, chronicle digests and ending reports shown are the kernel's
+actual outputs, byte-identical for the same seed. The same shell is
+verified responsive down to 390 px — see the full-height phone capture
+([`gamelab-responsive-390.png`](gamelab/docs/img/gamelab-responsive-390.png)).
+
+## Status at a glance
 
 | | |
 |---|---|
-| Integration version | **1.0.0** (first public release) |
+| Platform | **Decideverse GameLab** — Stage 3A shipped: Living Village playable (Stage 2: The Last Detective) |
+| Engine integration version | **1.0.0** (`omnidecide-wasm`, first public release — finished) |
 | Kernel | omnidecide-c **2.0.0**, pinned vendored snapshot |
 | Artifacts | `dist/omnidecide.wasm` 212,763 B · `dist/omnidecide.js` loader 8,725 B |
 | JS API | UMD (Node CJS/ESM, AMD, browser globals) — **zero dependencies** |
@@ -91,9 +167,12 @@ Three properties define the project:
 | Languages | en, zh, hi, es, ar, fr, bn, pt, id, ur + `auto`/`und` |
 | License | Apache-2.0 (same as upstream) |
 | Toolchain | Emscripten 7.0.0 · Node 24 · Playwright 1.57.0 · Chromium 143 |
-| CI | Seven-job GitHub Actions release pipeline (`.github/workflows/ci.yml`) |
+| CI | Nine-job GitHub Actions pipeline — A–G verify the engine, H–I verify the Decideverse games (`.github/workflows/ci.yml`) |
 
 ## Architecture
+
+The engine foundation — one pinned source tree, one compiled WASM
+artifact, one JavaScript API, shared by every Decideverse game:
 
 ```mermaid
 flowchart LR
@@ -241,6 +320,15 @@ byte-for-byte, including 中文 content in `unicode` mode.
 
 ## Quick start
 
+### Run the Decideverse GameLab (no build needed — `dist/` is committed)
+
+```bash
+python3 -m http.server 8000
+# open http://127.0.0.1:8000/gamelab/index.html
+```
+
+### Verify the engine from a clean checkout
+
 ```bash
 # 1. Rebuild dist/ (needs Emscripten — see docs/BUILDING.md)
 ./build.sh
@@ -355,7 +443,7 @@ release in `docs/VERIFICATION-1.0.0.md`):
 | Upstream `make test` (kernel + spine) | **373 + 210 checks** |
 | Upstream golden / spine-golden / hostile / stress | 2013 / 35 / 5443 / 6135 (0 memory growth) |
 | Upstream determinism, sanitize, docs-, version-, v2-gates | **ALL GREEN** |
-| CI workflow structural lint (`scripts/ci-workflow-lint.py`) | **39/39** · `actionlint 1.7.7` clean |
+| CI workflow structural lint (`scripts/ci-workflow-lint.py`) | **39/39** at the 1.0.0 tag (71/71 at Stage 3A) · `actionlint 1.7.7` clean |
 
 ## Benchmarks
 
@@ -416,7 +504,7 @@ Methodology and integrity rules: `docs/BENCHMARKS.md`. Machine-readable
 results (fresh JSON per run, no thresholds, environment metadata
 embedded): `docs/benchmarks/`.
 
-## CI release pipeline
+## CI verification pipeline
 
 The repository verifies itself on GitHub Actions
 (`.github/workflows/ci.yml`). It runs on every push to `main`, on pull
@@ -435,7 +523,9 @@ flowchart TB
     D["D - functional and parity tests<br/>Node 78/78 - parity 40/40<br/>fresh-build byte-identity cmp"]
     E["E - browser verification<br/>Playwright + Chromium 29/29"]
     F["F - benchmarks<br/>fresh Node + Chromium JSON"]
-    G["G - release report<br/>fails unless A-F all green"]
+    H["H - Decideverse GameLab Node tests<br/>gamelab - adapter lifecycle - state - Living Village"]
+    I["I - Decideverse GameLab browser tests<br/>Playwright E2E on the real WASM distribution"]
+    G["G - release report<br/>fails unless every mandatory job is green"]
     trig --> A
     trig --> B
     trig --> C
@@ -443,10 +533,14 @@ flowchart TB
     C --> D
     C --> E
     C --> F
+    C --> H
+    C --> I
     A --> G
     D --> G
     E --> G
     F --> G
+    H --> G
+    I --> G
     classDef gate fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
     class G gate;
 ```
@@ -454,23 +548,29 @@ flowchart TB
 Job D performs a **genuine** reproducibility check: it rebuilds the
 WASM into an isolated directory (`build.sh --output-dir
 build/fresh-wasm`), leaves the downloaded CI artifact untouched, then
-byte-compares both with `cmp` + SHA-256. Job G assembles the
-consolidated verification report and **fails the pipeline unless every
-mandatory job reports `success`**.
+byte-compares both with `cmp` + SHA-256. Jobs H and I run the
+Decideverse suites (Node game tests and the browser E2E over the real
+WASM distribution — the same artifacts the games ship). Job G assembles
+the consolidated verification report and **fails the pipeline unless
+every mandatory job — including H and I — reports `success`**. The
+workflow shape itself is enforced by `scripts/ci-workflow-lint.py`
+(71 structural checks at Stage 3A; it guards the `chmod +x`
+permission-restoration steps and the required-report gate among
+others).
 
 ### Publish and watch the hosted run
 
 ```bash
 git init -b main && git add -A
 git commit -m "OmniDecide WASM 1.0.0 — first public release"
-git remote add origin git@github.com:<your-account>/omnidecide-wasm.git
+git remote add origin https://github.com/tamer4osman/decideverse.git
 git push -u origin main
 git tag -a v1.0.0 -m "OmniDecide WASM 1.0.0"
 git push origin v1.0.0
 ```
 
-Typical duration ≈ 25–40 minutes (Jobs A–F mostly in parallel, Job G
-waits for all six). Evidence uploaded per run:
+Typical duration ≈ 25–40 minutes (Jobs A–F, H and I mostly in parallel,
+Job G waits for all eight). Evidence uploaded per run:
 
 | Artifact | Content |
 |---|---|
@@ -478,6 +578,8 @@ waits for all six). Evidence uploaded per run:
 | `job-d-functional-parity` | `parity-report.json` (40/40), `artifact-integrity.json` (artifact == fresh rebuild) |
 | `job-e-browser` | `browser-check.json` + fresh Chromium screenshots |
 | `job-f-benchmarks` | fresh Node + Chromium benchmark JSON |
+| `job-h-gamelab-node-tests` | Decideverse Node suites: gamelab, adapter lifecycle, state, Living Village reports |
+| `job-i-gamelab-browser-tests` | Decideverse browser E2E report + fresh GameLab screenshots |
 | `omnidecide-wasm-dist` / `omnidecide-wasm-checksums` | verified WASM artifacts + SHA-256 report |
 
 Details: `RELEASE.md` and `docs/CI-VERIFICATION.md`. The hosted run for
@@ -541,23 +643,38 @@ Kernel 2.0.0 decisions replay bit-identically across 1.x-era releases
 ## Repository layout
 
 ```
+gamelab/                   Decideverse — the platform: GameLab UI, shared
+                           simulation framework, the games (detective,
+                           living-village), design docs, screenshots
 vendor/omnidecide-c/       pinned upstream kernel source (verified per build)
 src/wrappers/odk_wasm.*    the single C interop layer (native + WASM)
 js/omnidecide.js           JavaScript API (UMD: Node CJS/ESM, AMD, browser)
 js/benchmark.js            shared benchmark workloads
-dist/                      generated artifacts (omnidecide.wasm + loader)
-web/                       browser playground
-tests/                     Node suite, parity, Playwright, benchmarks
-scripts/                   source pin tooling + verify-release.sh
-docs/                      API, BUILDING, TESTING, BENCHMARKS,
-                           COMPATIBILITY, WASM-STATUS (authoritative status),
-                           VERIFICATION-1.0.0, CI-VERIFICATION
+dist/                      committed artifacts (omnidecide.wasm + loader)
+web/                       engine playground (kernel demo)
+tests/                     Node suites (engine + Decideverse games),
+                           parity, Playwright E2E, benchmarks
+scripts/                   source pin tooling, verify-release.sh,
+                           ci-workflow-lint.py
+docs/                      engine records: API, BUILDING, TESTING,
+                           BENCHMARKS, COMPATIBILITY, WASM-STATUS
+                           (authoritative engine status), VERIFICATION-1.0.0,
+                           CI-VERIFICATION; Stage 2.x reports
+gamelab/docs/              Decideverse design documents (GAME-MODULES,
+                           ARCHITECTURE, LIVING-VILLAGE, ROADMAP, ...)
+.github/workflows/         the nine-job verification pipeline
 ```
 
 ## Documentation
 
 | Document | Content |
 |---|---|
+| [`gamelab/README.md`](gamelab/README.md) | Decideverse GameLab overview and quick start |
+| [`gamelab/docs/GAME-MODULES.md`](gamelab/docs/GAME-MODULES.md) | how a new game becomes a module, a registry entry and tests |
+| [`gamelab/docs/ARCHITECTURE.md`](gamelab/docs/ARCHITECTURE.md) | GameLab architecture: workspace, session, adapter, Inspector |
+| [`gamelab/docs/LIVING-VILLAGE.md`](gamelab/docs/LIVING-VILLAGE.md) | Living Village design: state, actions, engine rules, limits |
+| [`gamelab/docs/ROADMAP.md`](gamelab/docs/ROADMAP.md) | shipped and planned games, engineering candidates |
+| [`gamelab/docs/TESTING.md`](gamelab/docs/TESTING.md) | Decideverse test suites and browser E2E coverage |
 | [`docs/API.md`](docs/API.md) | full JavaScript API: create, kernel members, request object, envelope contract, errors |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | toolchain setup, Emscripten 7.0.0, build flags, floating-point contract |
 | [`docs/TESTING.md`](docs/TESTING.md) | how to run every acceptance suite and reproduce the evidence |
@@ -573,11 +690,16 @@ docs/                      API, BUILDING, TESTING, BENCHMARKS,
 ## Contributing
 
 Issues and pull requests are welcome — please read
-[`CONTRIBUTING.md`](CONTRIBUTING.md) first. House rules that keep the
-release honest: the vendored kernel tree is never modified locally;
-`-ffp-contract=off` is never traded for a build fix; a failing
-mandatory test fails the pipeline; benchmark numbers are measured, not
-gate-imposed. Run `./scripts/verify-release.sh` before submitting.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) first. For Decideverse work (games,
+GameLab UI, CI), [`gamelab/docs/GAME-MODULES.md`](gamelab/docs/GAME-MODULES.md)
+is the entry point; every new game ships with its design document, Node
+suite and browser E2E. House rules that keep the release honest: the
+vendored kernel tree is never modified locally; `-ffp-contract=off` is
+never traded for a build fix; a failing mandatory test fails the
+pipeline; benchmark numbers are measured, not gate-imposed; a planned
+game is never presented as playable. Run `./scripts/verify-release.sh`
+(engine) and the Decideverse suites (see `CONTRIBUTING.md`) before
+submitting.
 
 ## License
 

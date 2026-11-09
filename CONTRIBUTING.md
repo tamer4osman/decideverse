@@ -3,10 +3,38 @@
 
 # Contributing
 
-Thanks for helping. This is a small library with one overriding rule:
-**results must stay deterministic and bit-for-bit reproducible.**
+Thanks for helping. This repository has two layers:
 
-## Build and test
+- **Decideverse** — the active project: the GameLab, the games
+  (`gamelab/js/games/`), their suites and the CI wiring (`gamelab/`,
+  `tests/gamelab*.mjs`, `.github/workflows/`).
+- **The finished engine** — `omnidecide-wasm` 1.0.0, the verified
+  WebAssembly packaging of the OmniDecide C kernel 2.0.0 (`vendor/`,
+  `src/`, `js/`, `dist/`, `web/`, the engine suites in `tests/`).
+
+One overriding rule covers both: **results must stay deterministic and
+bit-for-bit reproducible.**
+
+## Decideverse changes (the common case)
+
+- Follow [gamelab/docs/GAME-MODULES.md](gamelab/docs/GAME-MODULES.md):
+  a new game is a module folder, a registry entry, pure scenario and
+  decision files, a Node suite and a browser E2E — and its design
+  document under `gamelab/docs/` is committed before the code.
+- The engine is consulted, never obeyed: scenario rules arbitrate, and
+  every request/response must stay inspectable in the Decision
+  Inspector.
+- Never fake playability: a planned game stays visibly planned.
+- The suites CI runs are listed at the bottom of this file; all of them
+  must pass, and a touched game's suite must not lose checks.
+
+## Engine changes (rare)
+
+The commands below are the upstream kernel gates, run against the
+vendored pinned source (see `docs/BUILDING.md` for the integration
+build):
+
+### Build and test (upstream kernel gates)
 
 ```sh
 make CFLAGS="-O2 -Wall -Wextra -Werror -pedantic" all examples
