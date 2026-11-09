@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-11-08T04:09:10.517Z",
+  "corpus": 40,
+  "byteIdentical": 40,
+  "mismatches": 0,
+  "missingInWasm": 0,
+  "missingInNative": 0,
+  "note": "Envelopes are the wrapper-authored decision payloads; no field is excluded and no tolerance is applied."
+}

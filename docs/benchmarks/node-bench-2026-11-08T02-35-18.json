@@ -1,0 +1,118 @@
+{
+  "timestamp": "2026-11-08T02:35:17.614Z",
+  "host": {
+    "platform": "linux",
+    "release": "5.10.134-013.15.kangaroo.al8.x86_64",
+    "arch": "x64",
+    "cpuModel": "Intel(R) Xeon(R) Processor",
+    "cpuCount": 2,
+    "memoryMB": 4042
+  },
+  "runtime": {
+    "nodeVersion": "v24.22.2",
+    "integrationVersion": "1.0.0",
+    "kernel": "omnidecide-c 2.0.0 (pinned vendored source)",
+    "emscripten": "7.0.0",
+    "wasmBinary": "dist/omnidecide.wasm"
+  },
+  "scale": "standard",
+  "init": {
+    "moduleLoadMs": 3.14,
+    "kernelCreateMs": 0.02,
+    "firstDecisionMs": 3.09
+  },
+  "workloads": {
+    "small": {
+      "iterations": 2000,
+      "avgMs": 0.0727,
+      "medianMs": 0.0527,
+      "minMs": 0.0509,
+      "maxMs": 15.1657,
+      "p95Ms": 0.0864,
+      "p99Ms": 0.1367,
+      "opsPerSec": 13752.8,
+      "name": "small (200 B context)",
+      "totalMs": 146.44,
+      "contextBytes": 200,
+      "rawLoop": {
+        "iterations": 2000,
+        "totalMs": 95.17,
+        "avgMs": 0.0476,
+        "opsPerSec": 21016
+      }
+    },
+    "medium": {
+      "iterations": 800,
+      "avgMs": 0.2211,
+      "medianMs": 0.2179,
+      "minMs": 0.2162,
+      "maxMs": 0.4205,
+      "p95Ms": 0.2303,
+      "p99Ms": 0.242,
+      "opsPerSec": 4521.9,
+      "name": "medium (2 KB context)",
+      "totalMs": 177.08,
+      "contextBytes": 2048,
+      "rawLoop": {
+        "iterations": 800,
+        "totalMs": 165.72,
+        "avgMs": 0.2071,
+        "opsPerSec": 4827.5
+      }
+    },
+    "large": {
+      "iterations": 150,
+      "avgMs": 1.8127,
+      "medianMs": 1.8098,
+      "minMs": 1.7927,
+      "maxMs": 1.8772,
+      "p95Ms": 1.8429,
+      "p99Ms": 1.8711,
+      "opsPerSec": 551.7,
+      "name": "large (20 KB context)",
+      "totalMs": 271.95,
+      "contextBytes": 20480,
+      "rawLoop": {
+        "iterations": 150,
+        "totalMs": 255.2,
+        "avgMs": 1.7013,
+        "opsPerSec": 587.8
+      }
+    },
+    "unicode": {
+      "iterations": 800,
+      "avgMs": 0.0916,
+      "medianMs": 0.0898,
+      "minMs": 0.086,
+      "maxMs": 0.2978,
+      "p95Ms": 0.0997,
+      "p99Ms": 0.116,
+      "opsPerSec": 10913.7,
+      "name": "unicode (中文 ~2 KB context)",
+      "totalMs": 73.44,
+      "contextBytes": 2048,
+      "rawLoop": {
+        "iterations": 800,
+        "totalMs": 26.31,
+        "avgMs": 0.0329,
+        "opsPerSec": 30407.1
+      }
+    }
+  },
+  "overallPipeline": {
+    "iterations": 3750,
+    "avgMs": 0.178,
+    "medianMs": 0.084,
+    "minMs": 0.0509,
+    "maxMs": 15.1657,
+    "p95Ms": 0.2318,
+    "p99Ms": 1.8163,
+    "opsPerSec": 5617.6
+  },
+  "notes": [
+    "pipelineMs = full JavaScript-to-WASM decision pipeline (string marshaling + wrapper call + envelope parse)",
+    "rawLoopMs = isolated C timing: pre-marshaled request, no per-call JavaScript marshaling",
+    "isolated C timing is NOT the full pipeline and must not be reported as such"
+  ],
+  "method": "fresh execution over dist/omnidecide.wasm; no historical data reused"
+}

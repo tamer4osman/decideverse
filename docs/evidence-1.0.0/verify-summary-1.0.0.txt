@@ -1,0 +1,12 @@
+verify-release summary - 2026-11-08T04:09:16Z
+mode: FULL
+prerequisites                                      PASS
+kernel source pin and manifest verification        PASS
+native build (kernel + integration wrapper)        PASS
+native wrapper smoke + ASan/LSan leak pass         PASS
+upstream kernel regression gates (incl. v2-gates aggregate) PASS
+WASM build + fresh-build byte-identity check       PASS
+Node functional suite                              PASS
+native/WASM envelope parity                        PASS
+browser Playwright verification                    PASS
+standard benchmarks (Node + browser)               PASS

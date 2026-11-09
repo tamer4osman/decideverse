@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-11-08T04:09:49.097Z",
+  "build": {
+    "command": "./build.sh --output-dir build/fresh-wasm",
+    "exitStatus": 0,
+    "outputDir": "build/fresh-wasm",
+    "note": "Fresh build from the vendored pinned source with an independently initialized Emscripten toolchain; the downloaded artifact directory was never written to."
+  },
+  "downloadedArtifact": {
+    "dir": "dist",
+    "files": [
+      {
+        "file": "omnidecide.wasm",
+        "sha256": "3c1c8b0acdeb4d3eb8f9c47b115b15ed5017bf5f9951c1d13a351647a1ebbbdb",
+        "bytes": 212763
+      },
+      {
+        "file": "omnidecide.js",
+        "sha256": "c2e94942cd2c0d2b6fb1e1417c2dc17b15e65a1a3f6e7345be1be1f21e765d6e",
+        "bytes": 8725
+      }
+    ]
+  },
+  "freshBuild": {
+    "dir": "build/fresh-wasm",
+    "files": [
+      {
+        "file": "omnidecide.wasm",
+        "sha256": "3c1c8b0acdeb4d3eb8f9c47b115b15ed5017bf5f9951c1d13a351647a1ebbbdb",
+        "bytes": 212763
+      },
+      {
+        "file": "omnidecide.js",
+        "sha256": "c2e94942cd2c0d2b6fb1e1417c2dc17b15e65a1a3f6e7345be1be1f21e765d6e",
+        "bytes": 8725
+      }
+    ]
+  },
+  "byteComparison": [
+    {
+      "file": "omnidecide.wasm",
+      "ciPath": "dist/omnidecide.wasm",
+      "freshPath": "build/fresh-wasm/omnidecide.wasm",
+      "byteIdentical": true,
+      "cmpExitStatus": 0
+    },
+    {
+      "file": "omnidecide.js",
+      "ciPath": "dist/omnidecide.js",
+      "freshPath": "build/fresh-wasm/omnidecide.js",
+      "byteIdentical": true,
+      "cmpExitStatus": 0
+    }
+  ],
+  "sha256Comparison": [
+    {
+      "file": "omnidecide.wasm",
+      "match": true
+    },
+    {
+      "file": "omnidecide.js",
+      "match": true
+    }
+  ],
+  "toolchain": {
+    "emcc": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 7.0.0 (777e6e5db7b4990bcaeb1b9998ed642cc84e6629)",
+    "node": "v24.22.2",
+    "emsdkAction": "emscripten-core/setup-emsdk pinned to v16 (4528d102f7230f0e7b276855c01ea1159be0e984)"
+  },
+  "kernel": {
+    "version": "2.0.0",
+    "snapshotCommit": "561fdb8ae43a4610d3df92cde5ba0a0ac5f63393",
+    "fingerprintRecorded": "151754b2fcd7b5db8101ca458caced68e11725dc7ca66f8a79c6293b1b392f1a",
+    "fingerprintActual": "151754b2fcd7b5db8101ca458caced68e11725dc7ca66f8a79c6293b1b392f1a",
+    "fingerprintMatch": true
+  },
+  "comparisonsPassed": true
+}
