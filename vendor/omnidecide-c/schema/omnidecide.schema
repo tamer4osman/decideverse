@@ -1,0 +1,278 @@
+{
+  "schema": "omnidecide",
+  "version": "1.0.0",
+  "description": "OmniDecide v2.0.0 cross-boundary records. This file is the single source of truth: C types and JSON (de)serialization for every record below are GENERATED from it by tools/gen_types.py into odk-spine/odk_spine_types.[ch]. Hand-maintained duplicates are forbidden and CI-checked. Field order is normative: it fixes C struct order and JSON key order, which keeps every serialized record byte-deterministic.",
+
+  "conventions": {
+    "json_style": "compact, keys in field-declaration order",
+    "required_fields": "every listed field is required in JSON; empty values use \"\" / 0 / [] / {}",
+    "time": "int64 milliseconds since the Unix epoch, supplied by the caller; -1 in valid_to means 'open ended'",
+    "int64_range": "|v| <= 2^53 so JSON numbers stay exact",
+    "hashes": "FNV-1a 64-bit, lowercase 16-hex-digit strings",
+    "ids": "non-empty printable ASCII, no whitespace, max 128 bytes",
+    "enums": "documented as allowed_values; validated by the spine, not by the generated code"
+  },
+
+  "types": [
+    {
+      "name": "RegistrationRef",
+      "description": "Reference to one registered customization (name + content hash) as recorded in decision pins and registry listings.",
+      "fields": [
+        {"name": "kind", "type": "string", "description": "scheme_set | decomposition_template | vocabulary | corpus | brain_snapshot"},
+        {"name": "id", "type": "string"},
+        {"name": "version", "type": "int64"},
+        {"name": "content_hash", "type": "string"}
+      ]
+    },
+
+    {
+      "name": "Observation",
+      "description": "The universal append-only record of the storage spine. Decisions, classification events and outcomes are all Observations; classification history is therefore queryable like any other variable.",
+      "fields": [
+        {"name": "observation_id", "type": "string"},
+        {"name": "kind", "type": "string", "allowed_values": ["decision", "classification", "outcome", "custom"]},
+        {"name": "t", "type": "int64", "description": "event time, caller-supplied"},
+        {"name": "scope", "type": "string", "description": "opaque application-defined selector echo; \"\" when none"},
+        {"name": "subject_ref", "type": "string"},
+        {"name": "primitive", "type": "string", "description": "kernel primitive name when kind=decision, else \"\""},
+        {"name": "scheme_id", "type": "string", "description": "scheme the record belongs to; \"\" when none"},
+        {"name": "payload_json", "type": "string", "description": "result document (ordered keys) for the record kind"},
+        {"name": "confidence", "type": "double"},
+        {"name": "tier", "type": "string", "allowed_values": ["", "A", "B"]},
+        {"name": "brain_snapshot_id", "type": "string"},
+        {"name": "outcome", "type": "string", "allowed_values": ["", "success", "failure"]},
+        {"name": "kernel_version", "type": "string"},
+        {"name": "schema_fp", "type": "string"},
+        {"name": "registrations", "type": "object<RegistrationRef>[]"}
+      ]
+    },
+
+    {
+      "name": "SchemeRule",
+      "description": "One declarative matching rule of a scheme. Rules are evaluated in declaration order; among the rules whose condition holds, the highest priority wins, and ties are broken by the earlier declaration.",
+      "fields": [
+        {"name": "label", "type": "string", "description": "classification label this rule assigns"},
+        {"name": "match_terms", "type": "string[]", "description": "terms matched against the item text (case-folded, word-bounded)"},
+        {"name": "any_term", "type": "bool", "description": "true: any term suffices; false: all terms required"},
+        {"name": "priority", "type": "int64"},
+        {"name": "facets", "type": "map", "description": "facet assignments; keys must be in the owning scheme's facet_names"}
+      ]
+    },
+
+    {
+      "name": "Scheme",
+      "description": "A declarative, versioned classification scheme (F1). Schemes are data, never code; they are supplied by consuming applications through the F7 extension API.",
+      "fields": [
+        {"name": "id", "type": "string"},
+        {"name": "version", "type": "int64"},
+        {"name": "valid_from", "type": "int64"},
+        {"name": "valid_to", "type": "int64", "description": "-1 = open ended"},
+        {"name": "default_label", "type": "string", "description": "assigned when no rule matches"},
+        {"name": "facet_names", "type": "string[]", "description": "closed facet vocabulary of this scheme version"},
+        {"name": "rules", "type": "object<SchemeRule>[]"},
+        {"name": "notes", "type": "string"}
+      ]
+    },
+
+    {
+      "name": "SynonymGroup",
+      "description": "One canonical term with its accepted paraphrases. Data for Tier B classification resilience.",
+      "fields": [
+        {"name": "canonical", "type": "string"},
+        {"name": "terms", "type": "string[]"}
+      ]
+    },
+
+    {
+      "name": "Vocabulary",
+      "description": "A versioned, temporally valid synonym dictionary (F7 data). Tier B uses it to expand item and rule terms before matching.",
+      "fields": [
+        {"name": "id", "type": "string"},
+        {"name": "version", "type": "int64"},
+        {"name": "valid_from", "type": "int64"},
+        {"name": "valid_to", "type": "int64", "description": "-1 = open ended"},
+        {"name": "groups", "type": "object<SynonymGroup>[]"}
+      ]
+    },
+
+    {
+      "name": "Classification",
+      "description": "One scheme's assignment for one item (F1). Tier-labeled and, for Tier B, attributed to the brain snapshot that produced it.",
+      "fields": [
+        {"name": "scheme_id", "type": "string"},
+        {"name": "scheme_version", "type": "int64"},
+        {"name": "label", "type": "string"},
+        {"name": "facets", "type": "map"},
+        {"name": "tier", "type": "string", "allowed_values": ["A", "B"]},
+        {"name": "brain_snapshot_id", "type": "string", "description": "\"\" for Tier A"},
+        {"name": "confidence", "type": "double"},
+        {"name": "matched_terms", "type": "string[]", "description": "evidence terms in rule-declaration order"},
+        {"name": "rule_index", "type": "int64", "description": "index into the scheme's rules; -1 = default label"}
+      ]
+    },
+
+    {
+      "name": "ClassificationResult",
+      "description": "The one-call, N-schemes result document of odk_classify (F1): one Classification per active scheme version, grouped per scheme.",
+      "fields": [
+        {"name": "subject_ref", "type": "string"},
+        {"name": "t", "type": "int64", "description": "classification time, caller-supplied"},
+        {"name": "classifications", "type": "object<Classification>[]"}
+      ]
+    },
+
+    {
+      "name": "ClassificationInterval",
+      "description": "One append-only validity interval of an item's classification (F2). Reclassification appends; history is first-class data.",
+      "fields": [
+        {"name": "subject_ref", "type": "string"},
+        {"name": "scheme_id", "type": "string"},
+        {"name": "scheme_version", "type": "int64"},
+        {"name": "label", "type": "string"},
+        {"name": "facets", "type": "map"},
+        {"name": "tier", "type": "string", "allowed_values": ["A", "B", ""]},
+        {"name": "brain_snapshot_id", "type": "string"},
+        {"name": "valid_from", "type": "int64"},
+        {"name": "valid_to", "type": "int64", "description": "-1 = open ended"},
+        {"name": "observation_id", "type": "string", "description": "classification event that created this interval"}
+      ]
+    },
+
+    {
+      "name": "TemplateParameter",
+      "description": "A declared parameter of a decomposition template.",
+      "fields": [
+        {"name": "name", "type": "string"},
+        {"name": "type", "type": "string", "allowed_values": ["string", "int", "double"]},
+        {"name": "default_value", "type": "string"},
+        {"name": "required", "type": "bool"}
+      ]
+    },
+
+    {
+      "name": "ComponentSpec",
+      "description": "Declares one component of a decomposition output.",
+      "fields": [
+        {"name": "name", "type": "string"},
+        {"name": "kind", "type": "string", "allowed_values": ["sentences", "keywords", "keyvalue", "whole"]},
+        {"name": "max_items", "type": "int64"},
+        {"name": "required", "type": "bool"}
+      ]
+    },
+
+    {
+      "name": "ExtractionRule",
+      "description": "How one component is extracted from the item text. Deterministic modes: sentence (whole sentences containing any term, in text order), before/after/around (window chars around the first match), keyvalue (lines whose key matches a term).",
+      "fields": [
+        {"name": "component", "type": "string", "description": "name of the ComponentSpec this rule fills"},
+        {"name": "terms", "type": "string[]"},
+        {"name": "mode", "type": "string", "allowed_values": ["sentence", "before", "after", "around", "keyvalue"]},
+        {"name": "window", "type": "int64", "description": "characters for before/after/around; 0 for sentence mode"}
+      ]
+    },
+
+    {
+      "name": "DecompositionTemplate",
+      "description": "A declarative, versioned decomposition contract (F3): parameters, component specs and extraction rules. The output components are the contract between the perception layer and the decision layer.",
+      "fields": [
+        {"name": "id", "type": "string"},
+        {"name": "version", "type": "int64"},
+        {"name": "valid_from", "type": "int64"},
+        {"name": "valid_to", "type": "int64", "description": "-1 = open ended"},
+        {"name": "parameters", "type": "object<TemplateParameter>[]"},
+        {"name": "component_specs", "type": "object<ComponentSpec>[]"},
+        {"name": "extraction_rules", "type": "object<ExtractionRule>[]"}
+      ]
+    },
+
+    {
+      "name": "Component",
+      "description": "One extracted component of a decomposition output.",
+      "fields": [
+        {"name": "name", "type": "string"},
+        {"name": "kind", "type": "string"},
+        {"name": "content", "type": "string"},
+        {"name": "item_count", "type": "int64"},
+        {"name": "complete", "type": "bool", "description": "false when max_items truncated the extraction"}
+      ]
+    },
+
+    {
+      "name": "Components",
+      "description": "The decomposition output document (F3): resolved parameters plus the extracted components, in component-spec order.",
+      "fields": [
+        {"name": "template_id", "type": "string"},
+        {"name": "template_version", "type": "int64"},
+        {"name": "params_used", "type": "map"},
+        {"name": "components", "type": "object<Component>[]"}
+      ]
+    },
+
+    {
+      "name": "DecisionPin",
+      "description": "Append-only record of one decision (F6), sufficient for total replay: the exact request bytes ride along (request_json), the registered customization state is recorded by name and content hash, and the schema fingerprint keeps historical pins interpretable across schema evolution.",
+      "fields": [
+        {"name": "pin_id", "type": "string"},
+        {"name": "schema_fp", "type": "string"},
+        {"name": "kernel_version", "type": "string"},
+        {"name": "brain_snapshot_id", "type": "string"},
+        {"name": "context_hash", "type": "string"},
+        {"name": "inputs_ref", "type": "string", "description": "application-side reference to the pinned inputs"},
+        {"name": "request_json", "type": "string", "description": "exact evaluate request document for local re-derivation"},
+        {"name": "decision", "type": "string"},
+        {"name": "confidence", "type": "double"},
+        {"name": "tier", "type": "string", "allowed_values": ["", "A", "B"]},
+        {"name": "replay_class", "type": "string", "allowed_values": ["exact", "semantic", "foreign"]},
+        {"name": "timestamp", "type": "int64", "description": "caller-supplied; the kernel never reads the wall clock"},
+        {"name": "registrations", "type": "object<RegistrationRef>[]"}
+      ]
+    },
+
+    {
+      "name": "CalibrationBin",
+      "description": "One reliability row of a calibration report (F4): predicted confidence vs observed outcome rate for one primitive/scheme/tier cell and one confidence bin.",
+      "fields": [
+        {"name": "primitive", "type": "string"},
+        {"name": "scheme_id", "type": "string"},
+        {"name": "tier", "type": "string", "allowed_values": ["", "A", "B"]},
+        {"name": "bin_index", "type": "int64"},
+        {"name": "lo", "type": "double", "description": "bin lower bound (inclusive)"},
+        {"name": "hi", "type": "double", "description": "bin upper bound (exclusive, 1.0 inclusive)"},
+        {"name": "sample_count", "type": "int64"},
+        {"name": "predicted_mean", "type": "double"},
+        {"name": "observed_rate", "type": "double"},
+        {"name": "calibration_error", "type": "double", "description": "|predicted_mean - observed_rate|; 0 for empty bins"}
+      ]
+    },
+
+    {
+      "name": "CalibrationReport",
+      "description": "Deterministic calibration report (F4): two runs on the same decision log produce byte-identical reports. Rows are ordered by primitive, scheme_id, tier, bin_index.",
+      "fields": [
+        {"name": "report_id", "type": "string"},
+        {"name": "generated_from", "type": "string", "description": "decision log name the report was computed from"},
+        {"name": "bins", "type": "object<CalibrationBin>[]"}
+      ]
+    },
+
+    {
+      "name": "WorldVariable",
+      "description": "One rendered variable of a worldState context.",
+      "fields": [
+        {"name": "name", "type": "string"},
+        {"name": "type", "type": "string"},
+        {"name": "value", "type": "string"}
+      ]
+    },
+
+    {
+      "name": "WorldStateContext",
+      "description": "The worldState(variables, scope, t) contract shape (F6): the rendered context the kernel expects from the surrounding stack. scope is opaque and application-defined; the kernel consumes only the rendered result and never the selector's internals. The spine validates the shape; it does not implement storage.",
+      "fields": [
+        {"name": "t", "type": "int64"},
+        {"name": "scope_json", "type": "string", "description": "opaque, application-defined selector; validated as JSON, content not interpreted"},
+        {"name": "variables", "type": "object<WorldVariable>[]"}
+      ]
+    }
+  ]
+}

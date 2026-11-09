@@ -1,0 +1,3 @@
+{"case_id": "syn-0001", "kind": "fixture-item", "text": "The frobnication loop stalled twice during the nightly run. Load: 81 percent\nPressure: normal\nOperators restarted the frobber fault. Everything settled after the restart.", "t": 1000}
+{"case_id": "syn-0002", "kind": "fixture-item", "text": "An outage is affecting many users in the west region.", "t": 1001}
+{"case_id": "syn-0003", "kind": "fixture-item", "text": "Everything is quiet; no frobnication, no stalls.", "t": 1002}

@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tamer Osman */
+/*
+ * src/odk_languages.def - 4.2.0 THE single table-driven language
+ * definition file.  The owner can change the supported language set
+ * by editing this table (plus each language's corpus/tests); no logic
+ * changes are required.  Included by odk_lang.c (table) and by
+ * include/omnidecide.h (enum generation - keep both in sync via the
+ * ODK_LANG_X macros below; the public header defines its own copies
+ * so it does not depend on src/).
+ *
+ * Fields: code, ENUM-suffix, display name, script nibble
+ * (ODK_S_* from odk_unicode_internal.h), RTL flag, pack flags.
+ *
+ * Pack flags:
+ *   LF_HAVE_PACK   a compiled-in stopword pack exists
+ *   LF_ARABIC_FOLD Arabic/Urdu letter folding rules apply
+ *   LF_ZWJ_JOIN    ZWJ/ZWNJ join tokens (kept inside, stripped for
+ *                  matching)
+ *   LF_LATIN       Latin-script pack (elision/diacritic rules apply)
+ *   LF_ZH          Chinese segmentation modes apply
+ *
+ * UNREVIEWED data notice: every pack derived from this table is
+ * unreviewed by native speakers until native review signs it off
+ * (see docs/LANGUAGES.md).
+ */
+
+#define LF_HAVE_PACK   0x01u
+#define LF_ARABIC_FOLD 0x02u
+#define LF_ZWJ_JOIN    0x04u
+#define LF_LATIN       0x08u
+#define LF_ZH          0x10u
+
+/* code, enum suffix, name, script, rtl, flags */
+#define ODK_LANGUAGE_TABLE(X)                                              \
+    X(und, UND, "undetermined", ODK_S_WORD, 0, 0u)                         \
+    X(en,  EN,  "english",      ODK_S_WORD, 0, LF_HAVE_PACK | LF_LATIN)    \
+    X(zh,  ZH,  "chinese",      ODK_S_HAN,  0, LF_HAVE_PACK | LF_ZH)       \
+    X(hi,  HI,  "hindi",        ODK_S_WORD, 0, LF_HAVE_PACK | LF_ZWJ_JOIN) \
+    X(es,  ES,  "spanish",      ODK_S_WORD, 0, LF_HAVE_PACK | LF_LATIN)    \
+    X(ar,  AR,  "arabic",       ODK_S_WORD, 1, LF_HAVE_PACK |              \
+                                          LF_ARABIC_FOLD | LF_ZWJ_JOIN)   \
+    X(fr,  FR,  "french",       ODK_S_WORD, 0, LF_HAVE_PACK | LF_LATIN)    \
+    X(bn,  BN,  "bengali",      ODK_S_WORD, 0, LF_HAVE_PACK | LF_ZWJ_JOIN) \
+    X(pt,  PT,  "portuguese",   ODK_S_WORD, 0, LF_HAVE_PACK | LF_LATIN)    \
+    X(id,  ID,  "indonesian",   ODK_S_WORD, 0, LF_HAVE_PACK | LF_LATIN)    \
+    X(ur,  UR,  "urdu",         ODK_S_WORD, 1, LF_HAVE_PACK |              \
+                                          LF_ARABIC_FOLD | LF_ZWJ_JOIN)
+/* Tier-2 (deferred): ru (Cyrillic), de (upgrade), ja (bigram
+ * path unchanged).  Add rows here when they ship. */

@@ -1,0 +1,22 @@
+# Prohibited-words list for the customization-seam gate (I6).
+#
+# This list is DATA, application-supplied and configurable: the shipped
+# mechanism (tools/check_seam.sh) never hard-codes content. These words
+# are the synthetic example's fixture vocabulary plus a spread of
+# common-domain terms; a consuming application replaces this file with
+# its own domain vocabulary. One word or phrase per line; '#' comments.
+frobnication
+frobber
+fixture-triage
+fixture-impact
+fixture-report
+fixture-synonyms
+widget
+gadget
+invoice
+patient
+flight
+passenger
+medical
+radiology
+contract_number

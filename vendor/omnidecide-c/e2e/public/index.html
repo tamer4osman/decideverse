@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tamer Osman -->
+<!--
+  Browser harness for the OmniDecide v2.0.0 sidecar: exercises the HTTP
+  integration surface from a real browser (Chromium via Playwright) and
+  renders the verdicts. Test content only — not a product UI.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OmniDecide v2.0.0 — sidecar browser harness</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; background: #fafafa; }
+  section { background: #fff; border: 1px solid #ddd; padding: 1rem;
+            margin-bottom: 1rem; border-radius: 6px; }
+  h2 { margin-top: 0; font-size: 1.1rem; }
+  .ok { color: #0a7d33; font-weight: 600; }
+  .bad { color: #b3261e; font-weight: 600; }
+  pre { background: #f2f2f2; padding: .5rem; overflow-x: auto;
+        font-size: .8rem; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #ccc; padding: .25rem .5rem; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>OmniDecide v2.0.0 — sidecar browser harness</h1>
+
+<section id="ping-section">
+  <h2>1. sidecar ping (build identity)</h2>
+  <pre id="ping">pending</pre>
+</section>
+
+<section id="classify-section">
+  <h2>2. classification (one call, N schemes)</h2>
+  <pre id="classify">pending</pre>
+</section>
+
+<section id="determinism-section">
+  <h2>3. determinism (two identical requests must be byte-equal)</h2>
+  <pre id="determinism">pending</pre>
+</section>
+
+<section id="replay-section">
+  <h2>4. pin &rarr; replay round-trip</h2>
+  <pre id="replay">pending</pre>
+</section>
+
+<section id="calibration-section">
+  <h2>5. calibration report</h2>
+  <div id="calibration">pending</div>
+</section>
+
+<script>
+const SIDECAR = 'http://127.0.0.1:18320';
+
+async function rpc(op, params) {
+  const res = await fetch(SIDECAR + '/rpc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: 'browser-' + Math.floor(performance.now()),
+                           op, params }),
+  });
+  return res.json();
+}
+
+const REQUEST = {
+  primitive: 'choice',
+  instruction: 'How should we fix the outage?',
+  options: ['restart the service', 'reinstall the operating system',
+            'wait for the weekend'],
+  context: 'The service stopped responding. Restarting the service ' +
+           'restored normal operation within seconds.',
+};
+
+(async () => {
+  // 1. ping
+  const ping = await rpc('ping', {});
+  document.getElementById('ping').textContent = JSON.stringify(ping.result);
+
+  // 2. classification
+  const cls = await rpc('classify', {
+    subject_ref: 'browser-item-1',
+    item_text: 'frobnication overheat on the thermal unit',
+    scope: '', t: 1000,
+  });
+  const c0 = cls.result.classifications[0];
+  document.getElementById('classify').innerHTML =
+    'label <span class="' + (c0.label === 'hot' ? 'ok' : 'bad') + '">' +
+    c0.label + '</span>, tier ' + c0.tier +
+    ', facets ' + JSON.stringify(c0.facets) +
+    ', confidence ' + c0.confidence;
+
+  // 3. determinism: two identical evaluate requests (same id!), byte-compare
+  const sameId = 'browser-det';
+  const e1 = await fetch(SIDECAR + '/rpc', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: sameId, op: 'evaluate', params: REQUEST }),
+  });
+  const e2 = await fetch(SIDECAR + '/rpc', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: sameId, op: 'evaluate', params: REQUEST }),
+  });
+  const t1 = await e1.text();
+  const t2 = await e2.text();
+  const r1 = JSON.parse(t1);
+  const det = t1 === t2 && r1.result.decision === 'restart the service';
+  document.getElementById('determinism').innerHTML =
+    '<span class="' + (det ? 'ok' : 'bad') + '">' +
+    (det ? 'PASS' : 'FAIL') + '</span> — decision "' +
+    r1.result.decision + '" (confidence ' + r1.result.confidence + '), ' +
+    'two identical requests returned byte-identical responses';
+
+  // 4. pin -> replay
+  const pin = await rpc('pin', {
+    request: REQUEST, inputs_ref: 'browser-inputs-1',
+    replay_class: 'exact', timestamp: 1700000000000,
+  });
+  const rep = await rpc('replay', { pin_id: pin.result.pin_id });
+  const ok = rep.result.replay_class === 'exact' &&
+             rep.result.byte_equal === true &&
+             rep.result.registrations_match === true;
+  document.getElementById('replay').innerHTML =
+    '<span class="' + (ok ? 'ok' : 'bad') + '">' +
+    (ok ? 'PASS' : 'FAIL') + '</span> — pin ' + pin.result.pin_id +
+    ', verdict ' + rep.result.replay_class +
+    ', byte_equal ' + rep.result.byte_equal +
+    ', registrations_match ' + rep.result.registrations_match;
+
+  // 5. calibration report table
+  const cal = await rpc('calibrate', { generated_from: 'browser-log' });
+  const rows = cal.result.bins.map(b =>
+    '<tr><td>' + b.primitive + '</td><td>' + b.scheme_id + '</td><td>' +
+    b.tier + '</td><td>' + b.bin_index + '</td><td>' + b.sample_count +
+    '</td><td>' + b.predicted_mean + '</td><td>' + b.observed_rate +
+    '</td><td>' + b.calibration_error + '</td></tr>').join('');
+  document.getElementById('calibration').innerHTML =
+    (cal.result.bins.length > 0
+      ? '<table><tr><th>primitive</th><th>scheme</th><th>tier</th>' +
+        '<th>bin</th><th>n</th><th>predicted</th><th>observed</th>' +
+        '<th>error</th></tr>' + rows + '</table>'
+      : '<span class="ok">empty report (no outcomes ingested yet) — ' +
+        'deterministic and schema-valid</span>');
+  window.__HARNESS_DONE = true;
+})();
+</script>
+</body>
+</html>
