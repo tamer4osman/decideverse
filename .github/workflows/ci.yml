@@ -1,0 +1,775 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tamer Osman
+#
+# CI for the OmniDecide WASM integration — the release pipeline.
+#
+# Nine logical jobs (seven Stage 1 + two Stage 2, additive):
+#   A  source-verification   pinned kernel commit/version/manifest/licenses
+#   B  native                native build + upstream regression + parity runner
+#   C  wasm                  Emscripten build + artifact checksums
+#   D  functional-parity     Node suite + native/WASM parity + fresh-build
+#                            byte-identity verification (needs B, C)
+#   E  browser               Playwright + Chromium verification (needs C)
+#   F  benchmarks            fresh Node + browser benchmark JSON (needs C)
+#   G  release-report        consolidated verification report (needs A-F, H, I)
+#   H  gamelab-node-tests    Stage 2 GameLab Node suites vs the real WASM
+#                            kernel: framework/game, adapter lifecycle,
+#                            action tracking, seed/replay (needs C)
+#   I  gamelab-browser-tests Stage 2 GameLab browser E2E incl. the full
+#                            playable path and the 2.1 hardening regressions
+#                            (needs C)
+#
+# The kernel source is vendored at vendor/omnidecide-c/ and verified
+# against scripts/kernel-pin.env, so no stage downloads the kernel from
+# the network and no stage depends on developer-local paths.
+#
+# Pipeline design notes:
+#   1. The Emscripten setup action is pinned to the maintained
+#      emscripten-core/setup-emsdk repository at the immutable v16
+#      commit SHA, installing the pinned toolchain version 7.0.0.
+#   2. Job D initializes its own Emscripten toolchain (GitHub jobs run
+#      on separate runners) and verifies emcc before any build.
+#   3. WASM artifacts and checksums are uploaded as two separate,
+#      flat artifacts (omnidecide-wasm-dist / omnidecide-wasm-checksums)
+#      and downloaded to predictable paths; every download is verified
+#      for presence, size and the WASM magic bytes.
+#   4. The fresh-build comparison is genuine: Job D rebuilds into an
+#      isolated build/fresh-wasm/ directory (build.sh --output-dir),
+#      never touching the downloaded artifact, and compares byte-for-byte
+#      with cmp + SHA-256, producing build/artifact-integrity.json.
+#
+# Failed test logs, screenshots and benchmark JSONs are uploaded as
+# workflow artifacts.  A failed mandatory test always fails the pipeline;
+# there is no continue-on-error and no `|| true` on any setup step.
+# Stage 2 jobs (H, I) are additive: they consume the SAME verified WASM
+# artifact as the Stage 1 jobs (no duplicate compilation) and gate the
+# release report exactly like the Stage 1 jobs.
+
+name: omnidecide-wasm-ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# Minimal token footprint: no job in this pipeline needs write access.
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+  EMSCRIPTEN_VERSION: '7.0.0'
+
+jobs:
+  # -------------------------------------------------------------------
+  # Job A - source verification
+  # -------------------------------------------------------------------
+  source-verification:
+    name: A - source verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - name: Verify pinned kernel source (commit, version, manifest, licenses)
+        run: |
+          set -euo pipefail
+          mkdir -p build/verify-logs
+          {
+            ./fetch-kernel.sh
+            echo "--- pinned snapshot commit ---"
+            grep ODK_SNAPSHOT_COMMIT scripts/kernel-pin.env
+            echo "--- manifest fingerprint (recomputed) ---"
+            bash scripts/source-manifest.sh vendor/omnidecide-c
+            echo "--- file count ---"
+            grep ODK_VENDOR_FILE_COUNT scripts/kernel-pin.env
+            echo "--- license files ---"
+            ls -la vendor/omnidecide-c/LICENSE vendor/omnidecide-c/NOTICE vendor/omnidecide-c/THIRD_PARTY_NOTICES.md
+            echo "source-verification: OK (vendored snapshot, no network download)"
+          } 2>&1 | tee build/verify-logs/job-a-source-verification.log
+
+      - name: Upload source verification log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-a-source-verification
+          path: build/verify-logs/
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job B - native build and regression tests
+  # -------------------------------------------------------------------
+  native:
+    name: B - native build and regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - name: Install cmake
+        run: |
+          set -euo pipefail
+          cmake --version || pipx install cmake || pip install --user cmake
+          cmake --version
+
+      - name: Build native (kernel + integration wrapper)
+        run: ./build-native.sh --build-only
+
+      - name: Run wrapper smoke test
+        run: build/native/odk_smoke
+
+      - name: Run native parity runner
+        run: build/native/odk_parity_runner tests/requests.jsonl build/native/native_envelopes.tsv
+
+      - name: ASan + LSan leak pass
+        run: ./build-native.sh --asan
+
+      - name: Upstream kernel regression gates
+        run: |
+          set -euo pipefail
+          mkdir -p build/verify-logs
+          cd vendor/omnidecide-c
+          {
+            make -j4
+            make test
+            make golden-check
+            make spine-golden-check
+            make hostile
+            make stress
+            make determinism
+            make sanitize
+            make docs-check
+            make version-check
+            make v2-gates
+          } 2>&1 | tee ../../build/verify-logs/job-b-upstream-gates.log
+
+      - name: Upload native parity runner and envelopes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: omnidecide-native-parity
+          # Flat artifact layout: odk_parity_runner + native_envelopes.tsv
+          # at the artifact root (least common ancestor = build/native).
+          path: |
+            build/native/odk_parity_runner
+            build/native/native_envelopes.tsv
+          if-no-files-found: error
+
+      - name: Upload native logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-b-native-logs
+          path: build/verify-logs/
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job C - WASM build
+  # -------------------------------------------------------------------
+  wasm:
+    name: C - WASM build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      # Pinned Emscripten setup action.  The historical
+      # mymindstorm/setup-emsdk path redirects to the maintained
+      # emscripten-core/setup-emsdk repository; v16 (2026-04-08) is the
+      # current release.  Pinned to the immutable v16 commit SHA.
+      - name: Install pinned Emscripten SDK
+        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16 (2026-04-08)
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+          actions-cache-folder: emsdk-cache
+
+      - name: Verify emcc version and PATH availability
+        run: |
+          set -euo pipefail
+          command -v emcc || { echo "FATAL: emcc is not on PATH after setup-emsdk"; exit 1; }
+          EMCC_LINE="$(emcc --version | head -1)"
+          echo "emcc: $EMCC_LINE"
+          case "$EMCC_LINE" in
+            *"${EMSCRIPTEN_VERSION}"*) ;;
+            *) echo "FATAL: expected emcc ${EMSCRIPTEN_VERSION}, got: $EMCC_LINE"; exit 1 ;;
+          esac
+
+      - name: Build WASM from the pinned source
+        run: ./build.sh
+
+      - name: Verify generated artifacts (presence, size, WASM magic bytes)
+        run: scripts/ci-verify-dist.sh dist
+
+      - name: Record artifact checksums
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          sha256sum dist/omnidecide.wasm dist/omnidecide.js | tee build/wasm-checksums.txt
+
+      # Two separate artifacts with flat, predictable layouts:
+      #   omnidecide-wasm-dist       -> omnidecide.js, omnidecide.wasm
+      #   omnidecide-wasm-checksums  -> wasm-checksums.txt
+      # Downstream jobs download them to the exact locations their
+      # consumers expect (see Jobs D/E/F).
+      - name: Upload WASM distribution artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: omnidecide-wasm-dist
+          path: dist
+          if-no-files-found: error
+
+      - name: Upload WASM checksum report artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: omnidecide-wasm-checksums
+          path: build/wasm-checksums.txt
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job D - functional and parity tests (needs B + C)
+  # -------------------------------------------------------------------
+  functional-parity:
+    name: D - functional and parity tests
+    runs-on: ubuntu-latest
+    needs: [native, wasm]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Dedicated artifact directories; nothing is extracted into dist/
+      # so the fresh build later in this job can never overwrite the
+      # downloaded artifact.
+      - name: Download WASM distribution (into artifacts/ci-wasm)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-wasm-dist
+          path: artifacts/ci-wasm
+
+      - name: Download WASM checksum report (into artifacts/ci-checksums)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-wasm-checksums
+          path: artifacts/ci-checksums
+
+      - name: Download native parity runner (from Job B)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-native-parity
+          path: artifacts/ci-native
+
+      - name: Verify downloaded prerequisites (files, sizes, magic bytes)
+        run: |
+          set -euo pipefail
+          scripts/ci-verify-dist.sh artifacts/ci-wasm
+          test -f artifacts/ci-checksums/wasm-checksums.txt || { echo "FATAL: downloaded checksum report missing"; exit 1; }
+          test -s artifacts/ci-native/odk_parity_runner || { echo "FATAL: downloaded native parity runner missing"; exit 1; }
+          test -f artifacts/ci-native/native_envelopes.tsv || { echo "FATAL: downloaded native envelopes missing"; exit 1; }
+          # upload-artifact archives do not preserve the executable bit
+          chmod +x artifacts/ci-native/odk_parity_runner
+          echo "downloaded prerequisites: OK"
+
+      - name: Cross-check downloaded artifact against the CI checksum report
+        run: |
+          set -euo pipefail
+          sed 's# dist/# artifacts/ci-wasm/#' artifacts/ci-checksums/wasm-checksums.txt | sha256sum -c -
+          echo "checksum report matches the downloaded artifact"
+
+      - name: Install Node test dependencies from the lockfile
+        run: cd tests && npm ci
+
+      # Jobs run on isolated runners: Job D installs and verifies its own
+      # pinned Emscripten toolchain instead of relying on Job C's.
+      - name: Install pinned Emscripten SDK for the fresh build
+        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16 (2026-04-08)
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+          actions-cache-folder: emsdk-cache
+
+      - name: Verify emcc before the fresh build
+        run: |
+          set -euo pipefail
+          command -v emcc || { echo "FATAL: emcc is not on PATH in Job D"; exit 1; }
+          emcc --version | head -1
+          case "$(emcc --version | head -1)" in
+            *"${EMSCRIPTEN_VERSION}"*) ;;
+            *) echo "FATAL: expected emcc ${EMSCRIPTEN_VERSION} in Job D"; exit 1 ;;
+          esac
+
+      # Fresh rebuild into an ISOLATED directory: dist/ is not written
+      # and the downloaded artifact stays byte-for-byte untouched.
+      - name: Fresh WASM build into an isolated directory
+        run: ./build.sh --output-dir build/fresh-wasm
+
+      - name: Verify fresh build output
+        run: scripts/ci-verify-dist.sh build/fresh-wasm
+
+      - name: Byte-compare downloaded artifact against the fresh build
+        run: |
+          set -euo pipefail
+          cmp artifacts/ci-wasm/omnidecide.wasm build/fresh-wasm/omnidecide.wasm \
+            || { echo "FATAL: omnidecide.wasm differs between CI artifact and fresh build"; exit 1; }
+          cmp artifacts/ci-wasm/omnidecide.js build/fresh-wasm/omnidecide.js \
+            || { echo "FATAL: omnidecide.js differs between CI artifact and fresh build"; exit 1; }
+          echo "byte comparison: downloaded artifact == fresh build (wasm + js)"
+
+      - name: Generate artifact integrity report
+        run: |
+          set -euo pipefail
+          node scripts/ci-integrity.mjs \
+            --ci artifacts/ci-wasm \
+            --fresh build/fresh-wasm \
+            --out build/artifact-integrity.json \
+            --build-exit 0 \
+            --build-cmd "./build.sh --output-dir build/fresh-wasm"
+
+      - name: Run the downloaded native parity runner (determinism cross-check)
+        run: |
+          set -euo pipefail
+          mkdir -p build/native
+          artifacts/ci-native/odk_parity_runner tests/requests.jsonl build/native/native_envelopes.tsv
+          cmp artifacts/ci-native/native_envelopes.tsv build/native/native_envelopes.tsv \
+            || { echo "FATAL: native envelopes differ between Job B artifact and Job D re-run"; exit 1; }
+          echo "native parity runner from Job B reproduces Job B's envelopes byte-for-byte"
+
+      - name: Run Node functional suite
+        run: node tests/omnidecide.test.mjs
+
+      - name: Run native/WASM parity (no silent skips)
+        env:
+          ODK_PARITY_RUNNER: artifacts/ci-native/odk_parity_runner
+        run: node tests/parity_check.mjs
+
+      - name: Upload parity and integrity reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-d-functional-parity
+          path: |
+            build/parity-report.json
+            build/artifact-integrity.json
+            build/native/native_envelopes.tsv
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job E - browser tests (needs C)
+  # -------------------------------------------------------------------
+  browser:
+    name: E - browser tests
+    runs-on: ubuntu-24.04 # pinned for Playwright 1.57.0 compatibility with Ubuntu 26.04
+    needs: [wasm]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Flat artifact layout lands exactly at dist/omnidecide.js +
+      # dist/omnidecide.wasm, where the playground and JS loader expect
+      # them (web/index.html loads ../dist/omnidecide.js).
+      - name: Download WASM distribution (into dist/)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-wasm-dist
+          path: dist
+
+      - name: Verify downloaded WASM distribution
+        run: scripts/ci-verify-dist.sh dist
+
+      - name: Install test dependencies from the lockfile
+        run: cd tests && npm ci
+
+      - name: Install matching Chromium
+        run: cd tests && npx playwright install --with-deps chromium
+
+      - name: Run browser verification (Playwright, fresh screenshots)
+        run: node tests/browser_check.mjs
+
+      - name: Upload screenshots and browser report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-e-browser
+          path: |
+            docs/img/browser-*.png
+            build/browser-check.json
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job F - benchmarks (needs C)
+  # -------------------------------------------------------------------
+  benchmarks:
+    name: F - benchmarks
+    runs-on: ubuntu-24.04 # pinned for Playwright 1.57.0 compatibility with Ubuntu 26.04
+    needs: [wasm]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download WASM distribution (into dist/)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-wasm-dist
+          path: dist
+
+      - name: Verify downloaded WASM distribution
+        run: scripts/ci-verify-dist.sh dist
+
+      - name: Install test dependencies from the lockfile
+        run: cd tests && npm ci
+
+      - name: Install matching Chromium
+        run: cd tests && npx playwright install --with-deps chromium
+
+      - name: Run standard Node benchmark
+        run: node tests/node_bench.mjs --scale standard
+
+      - name: Run standard browser benchmark
+        run: node tests/browser_bench.mjs --scale standard
+
+      - name: Upload benchmark reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-f-benchmarks
+          path: docs/benchmarks/*.json
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job H - Stage 2 GameLab Node tests (needs C; additive to Stage 1)
+  # -------------------------------------------------------------------
+  gamelab-node-tests:
+    name: H - gamelab node tests
+    runs-on: ubuntu-latest
+    needs: [wasm]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Git stores the shell scripts with mode 100644; a fresh checkout
+      # therefore has NO executable bits (ZIP permissions do not survive).
+      # Restore them before ANY direct script invocation (same practice
+      # as the Stage 1 jobs).
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # The exact verified WASM artifact from Job C - no rebuild here.
+      - name: Download WASM distribution (into dist/)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-wasm-dist
+          path: dist
+
+      - name: Verify downloaded WASM distribution
+        run: scripts/ci-verify-dist.sh dist
+
+      - name: Install pinned test dependencies from the lockfile
+        run: cd tests && npm ci
+
+      # Stage 2 GameLab Node suites - all against the REAL WASM kernel
+      # (the CommonJS integration loads dist/omnidecide.wasm).
+      - name: Run GameLab framework and game suite
+        run: node tests/gamelab.test.mjs
+
+      - name: Run adapter lifecycle suite (real WASM handle accounting)
+        run: node tests/adapter_lifecycle.test.mjs
+
+      - name: Run action tracking and seed/replay suite (real game module)
+        run: node tests/gamelab_state.test.mjs
+
+      # Machine-readable consolidated Stage 2 Node summary.
+      - name: Assemble the Stage 2 Node test summary
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+            const reports = [
+              "build/gamelab-node-report.json",
+              "build/adapter-lifecycle-report.json",
+              "build/gamelab-state-report.json"
+            ].map(read);
+            const summary = {
+              stage: "2.1",
+              kind: "gamelab-node-tests",
+              timestamp: new Date().toISOString(),
+              suites: reports,
+              totalChecks: reports.reduce((n, r) => n + r.checks, 0),
+              totalFailures: reports.reduce((n, r) => n + r.failures, 0),
+              allGreen: reports.every((r) => r.failures === 0)
+            };
+            fs.mkdirSync("build", { recursive: true });
+            fs.writeFileSync("build/gamelab-node-summary.json", JSON.stringify(summary, null, 2) + "\n");
+            if (!summary.allGreen) { console.error("Stage 2 Node suites NOT green"); process.exit(1); }
+            console.log(`gamelab-node summary: ${summary.totalChecks} checks, 0 failures`);
+          '
+
+      - name: Upload GameLab Node test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-h-gamelab-node-tests
+          path: |
+            build/gamelab-node-report.json
+            build/adapter-lifecycle-report.json
+            build/gamelab-state-report.json
+            build/gamelab-node-summary.json
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job I - Stage 2 GameLab browser E2E tests (needs C; additive)
+  # -------------------------------------------------------------------
+  gamelab-browser-tests:
+    name: I - gamelab browser tests
+    # Pinned for Playwright 1.57.0 compatibility (same environment as the
+    # established Stage 1 browser jobs; do not move to another runner
+    # image without verification).
+    runs-on: ubuntu-24.04
+    needs: [wasm]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Same permission restoration as Job H and the Stage 1 jobs: the
+      # committed scripts are 100644 in the Git index, and the dist
+      # verifier below is invoked directly.
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download WASM distribution (into dist/)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: omnidecide-wasm-dist
+          path: dist
+
+      - name: Verify downloaded WASM distribution
+        run: scripts/ci-verify-dist.sh dist
+
+      - name: Install pinned test dependencies from the lockfile
+        run: cd tests && npm ci
+
+      - name: Install matching Chromium
+        run: cd tests && npx playwright install --with-deps chromium
+
+      # The complete GameLab browser suite: the 12-step playable flow on
+      # the real WASM distribution plus the Stage 2.1 regressions (adapter
+      # lifecycle via the settings UI, shared action history, seed
+      # synchronization). Kernel results are never mocked here.
+      - name: Run GameLab browser end-to-end suite
+        run: node tests/gamelab_browser_check.mjs
+
+      - name: Upload browser report, screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-i-gamelab-browser-tests
+          path: |
+            build/gamelab-browser-check.json
+            gamelab/docs/img/gamelab-*.png
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job G - release report (needs all eight mandatory jobs)
+  # -------------------------------------------------------------------
+  release-report:
+    name: G - release report
+    runs-on: ubuntu-latest
+    # Gate on EVERY mandatory job: a failure of Job A or B alone must
+    # also block a successful release result, not only D/E/F failures.
+    # Stage 2 jobs (H, I) are mandatory too: a failed or skipped Stage 2
+    # verification blocks the release report.
+    needs:
+      - source-verification
+      - native
+      - wasm
+      - functional-parity
+      - browser
+      - benchmarks
+      - gamelab-node-tests
+      - gamelab-browser-tests
+    if: always()
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Ensure shell scripts have executable permissions
+        run: chmod +x build.sh build-native.sh fetch-kernel.sh scripts/*.sh
+
+      - name: Download all job artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: build/artifacts
+
+      - name: Assemble consolidated verification report
+        run: |
+          set -euo pipefail
+          mkdir -p build/verify-logs
+          INTEGRITY="build/artifacts/job-d-functional-parity/artifact-integrity.json"
+          PARITY="build/artifacts/job-d-functional-parity/parity-report.json"
+          BROWSER="build/artifacts/job-e-browser/build/browser-check.json"
+          CHECKSUMS="build/artifacts/omnidecide-wasm-checksums/wasm-checksums.txt"
+          VERSION="$(grep -m1 '"version"' tests/package.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          {
+            echo "# OmniDecide WASM ${VERSION} - hosted CI verification report"
+            echo ""
+            echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "## Workflow run"
+            echo ""
+            echo "- Run ID: ${{ github.run_id }} (run #${{ github.run_number }})"
+            echo "- Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Git commit: ${{ github.sha }}"
+            echo "- Branch: ${GITHUB_REF_NAME}"
+            echo "- Event: ${{ github.event_name }}"
+            echo ""
+            echo "## Job outcomes"
+            echo ""
+            echo "| Job | Result |"
+            echo "|---|---|"
+            echo "| A source-verification | ${{ needs.source-verification.result }} |"
+            echo "| B native | ${{ needs.native.result }} |"
+            echo "| C wasm | ${{ needs.wasm.result }} |"
+            echo "| D functional-parity | ${{ needs.functional-parity.result }} |"
+            echo "| E browser | ${{ needs.browser.result }} |"
+            echo "| F benchmarks | ${{ needs.benchmarks.result }} |"
+            echo "| H gamelab-node-tests | ${{ needs.gamelab-node-tests.result }} |"
+            echo "| I gamelab-browser-tests | ${{ needs.gamelab-browser-tests.result }} |"
+            echo ""
+            echo "## Toolchain and kernel (from the artifact integrity report)"
+            echo ""
+            if [ -f "$INTEGRITY" ]; then
+              echo '```json'
+              cat "$INTEGRITY"
+              echo '```'
+            else
+              echo "artifact-integrity.json NOT AVAILABLE (Job D did not succeed)"
+            fi
+            echo ""
+            echo "## WASM checksums (Job C artifact)"
+            echo ""
+            if [ -f "$CHECKSUMS" ]; then cat "$CHECKSUMS"; else echo "wasm-checksums.txt NOT AVAILABLE"; fi
+            echo ""
+            echo "## Native/WASM parity (Job D artifact)"
+            echo ""
+            if [ -f "$PARITY" ]; then cat "$PARITY"; else echo "parity-report.json NOT AVAILABLE"; fi
+            echo ""
+            echo "## Browser checks (Job E artifact)"
+            echo ""
+            if [ -f "$BROWSER" ]; then cat "$BROWSER"; else echo "browser-check.json NOT AVAILABLE"; fi
+            echo ""
+            echo "## Stage 2 GameLab Node tests (Job H artifact)"
+            echo ""
+            if [ -f "build/artifacts/job-h-gamelab-node-tests/gamelab-node-summary.json" ]; then
+              cat "build/artifacts/job-h-gamelab-node-tests/gamelab-node-summary.json"
+            else
+              echo "gamelab-node-summary.json NOT AVAILABLE (Job H did not succeed)"
+            fi
+            echo ""
+            echo "## Stage 2 GameLab browser checks (Job I artifact)"
+            echo ""
+            if [ -f "build/artifacts/job-i-gamelab-browser-tests/build/gamelab-browser-check.json" ]; then
+              cat "build/artifacts/job-i-gamelab-browser-tests/build/gamelab-browser-check.json"
+            else
+              echo "gamelab-browser-check.json NOT AVAILABLE (Job I did not succeed)"
+            fi
+            echo ""
+            echo "## Benchmark artifacts (Job F artifact)"
+            echo ""
+            find build/artifacts/job-f-benchmarks -type f 2>/dev/null | sort || echo "benchmark artifacts NOT AVAILABLE"
+            echo ""
+            echo "## Uploaded artifact inventory"
+            echo ""
+            find build/artifacts -type f | sort
+          } | tee build/verify-logs/ci-verification-report.md
+
+      - name: Fail the pipeline if any mandatory job failed
+        run: |
+          set -euo pipefail
+          FAILED=0
+          for entry in \
+            "A source-verification:${{ needs.source-verification.result }}" \
+            "B native:${{ needs.native.result }}" \
+            "C wasm:${{ needs.wasm.result }}" \
+            "D functional-parity:${{ needs.functional-parity.result }}" \
+            "E browser:${{ needs.browser.result }}" \
+            "F benchmarks:${{ needs.benchmarks.result }}" \
+            "H gamelab-node-tests:${{ needs.gamelab-node-tests.result }}" \
+            "I gamelab-browser-tests:${{ needs.gamelab-browser-tests.result }}"; do
+            name="${entry%%:*}"
+            result="${entry#*:}"
+            echo "job $name -> $result"
+            if [ "$result" != "success" ]; then
+              echo "MANDATORY JOB NOT GREEN: $name ($result)"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+          if [ "$FAILED" -gt 0 ]; then
+            echo "Release report: $FAILED mandatory job(s) did not succeed - NOT releasing."
+            exit 1
+          fi
+          echo "All mandatory verification jobs succeeded."
+
+      # A successful mandatory job MUST have produced its report: a job
+      # that passed but lost its artifact/report blocks the release just
+      # like a test failure (distinct failure mode, distinct message).
+      - name: Fail the pipeline if required test reports are missing
+        run: |
+          set -euo pipefail
+          MISSING=0
+          for report in \
+            "build/artifacts/job-d-functional-parity/artifact-integrity.json" \
+            "build/artifacts/job-d-functional-parity/parity-report.json" \
+            "build/artifacts/job-e-browser/build/browser-check.json" \
+            "build/artifacts/omnidecide-wasm-checksums/wasm-checksums.txt" \
+            "build/artifacts/job-h-gamelab-node-tests/gamelab-node-report.json" \
+            "build/artifacts/job-h-gamelab-node-tests/adapter-lifecycle-report.json" \
+            "build/artifacts/job-h-gamelab-node-tests/gamelab-state-report.json" \
+            "build/artifacts/job-h-gamelab-node-tests/gamelab-node-summary.json" \
+            "build/artifacts/job-i-gamelab-browser-tests/build/gamelab-browser-check.json"; do
+            if [ -f "$report" ]; then
+              echo "report ok: $report"
+            else
+              echo "MISSING REPORT: $report"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ "$MISSING" -gt 0 ]; then
+            echo "Release report: $MISSING required test report(s) missing although all jobs succeeded - NOT releasing."
+            exit 1
+          fi
+          echo "All required test reports are present."
+
+      - name: Upload consolidated report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: job-g-release-report
+          path: build/verify-logs/
+          if-no-files-found: error
