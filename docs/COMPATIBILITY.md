@@ -3,6 +3,11 @@
 
 # Compatibility
 
+> **Decideverse context:** engine-layer host compatibility. The
+> Decideverse GameLab (`gamelab/`) additionally requires a modern
+> browser with WebAssembly; it is verified on Chromium 143, including a
+> 390px-wide mobile-layout check.
+
 ## Host environments
 
 | Host | Status |

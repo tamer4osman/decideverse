@@ -3,6 +3,11 @@
 
 # Testing OmniDecide WASM
 
+> **Decideverse context:** this page covers the **engine** suites. The
+> Decideverse game suites (gamelab, adapter lifecycle, state, Living
+> Village, browser E2E) are documented in `gamelab/docs/TESTING.md`;
+> `CONTRIBUTING.md` lists exactly what the nine-job CI pipeline runs.
+
 Prerequisites once: `cd tests && npm ci && npx playwright install
 --with-deps chromium`. Build once: `./build.sh` (WASM) and
 `./build-native.sh` (native).

@@ -1,5 +1,11 @@
 # OmniDecide WASM 1.0.0 — Consolidated Verification Report
 
+> **Decideverse context:** this report is the preserved evidence for the
+> **finished** engine integration at the 1.0.0 tag. Games shipped on
+> this engine since (The Last Detective, Living Village) carry their own
+> suites and stage reports — platform status:
+> `gamelab/docs/ROADMAP.md`.
+
 **Generated:** 2026-11-08 · **Release:** omnidecide-wasm 1.0.0 (first
 public release) · **Host:** Linux 5.10.134 x86_64 (Debian 12 userland),
 Node v24.22.2, Emscripten 7.0.0

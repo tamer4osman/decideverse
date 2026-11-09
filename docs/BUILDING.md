@@ -3,6 +3,10 @@
 
 # Building OmniDecide WASM
 
+> **Decideverse context:** rebuilding the engine is only needed when
+> working on the engine itself — the Decideverse GameLab runs on the
+> committed `dist/` artifacts and requires no Emscripten toolchain.
+
 Everything builds from the **vendored pinned kernel source**
 (`vendor/omnidecide-c/`). No stage of the build downloads the kernel,
 consults the network, or depends on developer-local paths.

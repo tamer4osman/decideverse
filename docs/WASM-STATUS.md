@@ -1,5 +1,10 @@
 # OmniDecide WASM — Technical Status Report
 
+> **Decideverse context:** the engine documented here is **finished**
+> (omnidecide-wasm 1.0.0, verified 2026-11-08). Development continues on
+> Decideverse — the decision-simulation platform built on this engine;
+> platform status: `gamelab/docs/ROADMAP.md`.
+
 **Integration:** omnidecide-wasm **1.0.0**
 **Status date:** 2026-11-08
 **Authoritative source-provenance, build-environment, verification and

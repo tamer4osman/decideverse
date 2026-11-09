@@ -3,6 +3,11 @@
 
 # Benchmarks
 
+> **Decideverse context:** engine-layer performance evidence — the
+> responsiveness budget every Decideverse game arbitration runs inside.
+> The engine is finished at 1.0.0; these numbers are its recorded
+> snapshot.
+
 Tools: `tests/node_bench.mjs` (Node) and `tests/browser_bench.mjs`
 (Chromium via Playwright). Both drive the **shared** workload library
 `js/benchmark.js` inside the page/process against the real

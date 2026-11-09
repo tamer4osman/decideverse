@@ -7,6 +7,11 @@ Module: `js/omnidecide.js` (UMD — CommonJS, AMD, browser globals).
 Dependencies: none. Engine: the vendored OmniDecide C kernel 2.0.0
 compiled to WebAssembly (`dist/omnidecide.wasm`).
 
+> **Decideverse context:** this is the engine API that every Decideverse
+> game calls through the adapter (`gamelab/docs/ADAPTER.md`). The engine
+> is finished at 1.0.0; this document is authoritative for the
+> request/envelope contract.
+
 ```js
 // CommonJS
 const OmniDecide = require('js/omnidecide.js');
