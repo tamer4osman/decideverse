@@ -1,0 +1,22 @@
+# Normalize line endings across platforms.
+# Source files are LF-only; never let Git rewrite them to CRLF.
+.gitattributes text eol=lf
+* text=auto
+*.c text eol=lf
+*.h text eol=lf
+*.def text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.schema text eol=lf
+*.odkmodel binary
+*.wasm binary
+*.png binary
