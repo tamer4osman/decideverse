@@ -176,9 +176,32 @@ if missing_gate:
             "build/artifacts/job-h-gamelab-node-tests/gamelab-node-report.json",
             "build/artifacts/job-h-gamelab-node-tests/adapter-lifecycle-report.json",
             "build/artifacts/job-h-gamelab-node-tests/gamelab-state-report.json",
+            "build/artifacts/job-h-gamelab-node-tests/village-node-report.json",
             "build/artifacts/job-h-gamelab-node-tests/gamelab-node-summary.json",
             "build/artifacts/job-i-gamelab-browser-tests/build/gamelab-browser-check.json"]:
         check(report in mscript, f"missing-report gate checks {report.split('artifacts/')[1]}")
+
+# ---- Stage 3A: Living Village wiring (additive, strict) ----
+def steps_of(job):
+    return [st.get("name", "") for st in jobs[job]["steps"]]
+
+check(any("gamelab_village.test.mjs" in (st.get("run", "") or "") for st in jobs["gamelab-node-tests"]["steps"]),
+      "Job H runs the Living Village Node suite")
+check(any("gamelab_browser_check.mjs" in (st.get("run", "") or "") for st in jobs["gamelab-browser-tests"]["steps"]),
+      "Job I runs the extended browser suite (village flow included)")
+h_up = [st for st in jobs["gamelab-node-tests"]["steps"]
+        if st.get("with", {}).get("name") == "job-h-gamelab-node-tests"]
+check(len(h_up) == 1, "Job H uploads its reports exactly once")
+if h_up:
+    hpath = str(h_up[0]["with"]["path"])
+    check("build/village-node-report.json" in hpath, "Job H uploads the village report")
+    check("build/gamelab-node-summary.json" in hpath, "Job H uploads the consolidated summary")
+    check(h_up[0]["with"].get("if-no-files-found") == "error", "Job H upload fails on missing files")
+check("village-node-report.json" in str(jobs["gamelab-node-tests"]["steps"]) or
+      any("village-node-report" in (st.get("run", "") or "") for st in jobs["gamelab-node-tests"]["steps"]),
+      "Job H summary aggregates the village report")
+check(all("chmod +x build.sh" in (st.get("run", "") or "") for st in jobs["gamelab-node-tests"]["steps"] if st.get("name") == "Ensure shell scripts have executable permissions"),
+      "Job H keeps the executable-permission step")
 
 print()
 print(f"{len(checks) - len(failures)}/{len(checks)} structural checks passed")

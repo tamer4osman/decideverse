@@ -184,8 +184,10 @@ async function main() {
     await page.waitForSelector('.launcher-grid .game-card', { timeout: 5000 });
     const cardCount = await page.locator('.game-card').count();
     check(cardCount === 5, `launcher presents all five planned games (got ${cardCount})`);
-    check(await page.locator('.game-card.playable').count() === 1, 'exactly one playable module (The Last Detective)');
-    check(await page.locator('.game-card.planned').count() === 4, 'four games shown as planned (no fake playables)');
+    check(await page.locator('.game-card.playable').count() === 2,
+        'exactly two playable modules (The Last Detective, Living Village)');
+    check(await page.locator('.game-card.planned').count() === 3,
+        'three games shown as planned (no fake playables)');
     const detectiveCard = await page.textContent('.game-card.playable');
     check(/The Last Detective/.test(detectiveCard), 'playable card is The Last Detective');
     await shot(page, 'gamelab-launcher.png');
@@ -460,6 +462,109 @@ async function main() {
     check(statsPanel.includes('Pending cleanup handles') && statsPanel.includes('Cleanup failures / recoveries'),
         'A: the settings panel reports the real pending-cleanup and recovery accounting');
 
+    /* ================================================================== */
+    /* LIVING VILLAGE (Stage 3A): launch, steward, arbitrate, report       */
+    /* ================================================================== */
+    await page.goto(`${base}/gamelab/index.html#/launcher`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(`${GL()} !== undefined && ${GL()}.adapter.state === 'ready'`,
+        null, { timeout: 30000 });
+    check(await page.locator('a[href="#/sim/living-village"]').count() === 1,
+        'V: the launcher offers the playable Living Village card');
+    const villagePill = await page.textContent('.game-card.playable:has(a[href="#/sim/living-village"]) .status-pill');
+    check(/Stage 3/.test(villagePill), `V: the village card is badged Stage 3 (got "${villagePill.trim()}")`);
+    await page.click('a[href="#/sim/living-village"]');
+    await page.waitForSelector('#dt-start-simulation', { timeout: 5000 });
+    await page.click('#dt-start-simulation');
+    await page.waitForSelector('#lv-begin', { timeout: 5000 });
+    const villageBriefing = await page.textContent('.lv-briefing');
+    check(/Thornbury/.test(villageBriefing), 'V: the briefing introduces the village of Thornbury');
+    check(/lexical evidence matcher/.test(villageBriefing),
+        'V: the briefing describes the engine honestly (lexical evidence matcher)');
+    await shot(page, 'gamelab-village-briefing.png');
+
+    /* Briefing seed: validated, synced to the session, displayed. */
+    await page.fill('#lv-seed', '20261109');
+    await page.click('#lv-begin');
+    await page.waitForSelector('.lv-day', { timeout: 5000 });
+    check(await page.evaluate(`${GL()}.liveSession('living-village').seed`) === 20261109,
+        'V: the session carries the selected village seed');
+    check((await page.textContent('.controls-note')).includes('20261109'),
+        'V: the workspace displays the village seed');
+    check(await page.locator('.lv-villager').count() === 6, 'V: six villager cards render');
+
+    /* Steward day 1: assign the baker, host a gathering, end the day. */
+    await page.click('[data-assign="tamsin"]');
+    await page.click('[data-steward-action="host-gathering"]');
+    check(await actionsShown() === '3', 'V: begin + 2 steward actions = 3 successful player actions');
+    await page.click('#lv-endday');
+    await page.waitForSelector('h2:has-text("Day 2 in Thornbury")', { timeout: 20000 });
+    check(await actionsShown() === '4', 'V: end-day counts as exactly one further action');
+    check(await page.evaluate(`${GL()}.liveSession('living-village').actionLog.filter(
+        (a) => a.action === 'end-day').length`) === 1, 'V: the end-day is logged once');
+    const villageDigest = await page.textContent('#lv-digest');
+    check(/digest/i.test(villageDigest), 'V: the kernel-extracted chronicle digest is displayed');
+
+    /* 390px: the village day view adds no horizontal overflow and the
+     * primary nav stays usable (Stage 2.1.1 regression guard). */
+    await page.setViewportSize({ width: 390, height: 844 });
+    const vOverflow = await page.evaluate(
+        'document.documentElement.scrollWidth - document.documentElement.clientWidth');
+    check(vOverflow <= 2, `V: no horizontal overflow at 390px in the village (got ${vOverflow}px)`);
+    const vNavWidth = await page.evaluate(
+        'document.querySelector(".main-nav").getBoundingClientRect().width');
+    check(vNavWidth > 100, `V: the primary nav stays usable at 390px in the village (got ${Math.round(vNavWidth)}px)`);
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await shot(page, 'gamelab-village.png');
+
+    /* Decision Inspector shows a REAL village arbitration. */
+    await page.click('.ws-controls a[href="#/inspector"]');
+    await page.waitForSelector('.io-input', { timeout: 5000 });
+    const vDetail = await page.textContent('#decision-detail');
+    check(/today in the village/.test(vDetail),
+        'V: the inspector shows a real village arbitration (the day-1 digest request)');
+    check(/"primitive"\s*:\s*"extract"/.test(vDetail),
+        'V: the inspector shows the exact submitted request (extract envelope JSON)');
+    check(/R3/.test(vDetail), 'V: the inspector shows the declared rule R3 interpretation');
+
+    /* Play the remaining days out to the report (the live session
+     * survives navigation and auto-resumes). */
+    await page.evaluate("location.hash = '#/sim/living-village'");
+    await page.waitForSelector('#lv-endday', { timeout: 5000 });
+    for (let d = 2; d <= 7; d++) {
+        await page.click('#lv-endday');
+        await page.waitForSelector(`h2:has-text("Day ${d + 1} in Thornbury")`, { timeout: 20000 })
+            .catch(() => {}); /* day 8 renders the report, not a day header */
+        if (d === 7) await page.waitForSelector('#lv-report', { timeout: 20000 });
+    }
+    await page.waitForSelector('#lv-report', { timeout: 5000 });
+    const reportText = await page.textContent('#lv-report');
+    check(/Village report/.test(reportText), 'V: the run reaches the village report');
+    check(/thriving|settled|struggling/.test(reportText), `V: the report names its ending kind`);
+    check(/Disputes opened \/ resolved/.test(reportText), 'V: the report summarizes disputes');
+    await shot(page, 'gamelab-village-report.png');
+
+    /* Reset from the report: back to the briefing, counter zeroed. */
+    await page.click('#lv-reset-report');
+    await page.waitForSelector('#lv-begin', { timeout: 5000 });
+    check(await page.evaluate(`${GL()}.liveSession('living-village').actionLog.length`) === 0,
+        'V: reset clears the shared action log');
+    check(await page.evaluate(`${GL()}.liveSession('living-village').seed`) === 20261109,
+        'V: reset retains the effective seed');
+
+    /* Replay the recorded run: real re-invocations, byte-identical. */
+    await page.click('#lv-begin');
+    await page.waitForSelector('#lv-replay', { timeout: 5000 });
+    await page.click('#lv-replay');
+    await page.waitForSelector('#lv-replay-report', { timeout: 30000 });
+    const vReplay = await page.textContent('#lv-replay-report');
+    check(/byte-identical envelopes/.test(vReplay), 'V: the replay report compares envelopes');
+    const identicalMatch = vReplay.match(/Byte-identical envelopes(\d+) \/ (\d+)/);
+    check(identicalMatch !== null && identicalMatch[1] === identicalMatch[2] && Number(identicalMatch[1]) >= 49,
+        `V: every recorded envelope replayed byte-identical (got ` +
+        `${identicalMatch ? identicalMatch[1] + ' / ' + identicalMatch[2] : 'no match'})`);
+    check(/Failuresnone/.test(vReplay.replace(/\s+/g, '')), 'V: the replay aborted for no reason');
+
+    /* ================================================================== */
     /* Responsive layout check (390x844, phone). */
     const mobile = await context.newPage();
     await mobile.setViewportSize({ width: 390, height: 844 });
@@ -625,6 +730,9 @@ async function main() {
             'gamelab/docs/img/gamelab-benchmarks.png',
             'gamelab/docs/img/gamelab-ending.png',
             'gamelab/docs/img/gamelab-replay.png',
+            'gamelab/docs/img/gamelab-village-briefing.png',
+            'gamelab/docs/img/gamelab-village.png',
+            'gamelab/docs/img/gamelab-village-report.png',
             'gamelab/docs/img/gamelab-about.png',
             'gamelab/docs/img/gamelab-responsive-390.png'
         ]
