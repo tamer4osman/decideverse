@@ -1,0 +1,17 @@
+{
+  "name": "omnidecide-wasm-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test and benchmark tooling for the OmniDecide WASM integration (Node + Playwright).",
+  "type": "module",
+  "scripts": {
+    "test": "node omnidecide.test.mjs",
+    "parity": "node parity_check.mjs",
+    "browser": "node browser_check.mjs",
+    "bench:node": "node node_bench.mjs --scale standard",
+    "bench:browser": "node browser_bench.mjs --scale standard"
+  },
+  "dependencies": {
+    "playwright": "1.57.0"
+  }
+}
