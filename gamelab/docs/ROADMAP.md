@@ -1,12 +1,16 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tamer Osman -->
 
-# Roadmap — the four planned games
+# Roadmap — Decideverse games
 
-The launcher presents these as planned modules; Decideverse never ships fake
-playables. Each design below reuses the shared framework unchanged — a new
-game is a module folder, a registry entry, pure scenario/decision files and
-tests (see GAME-MODULES.md).
+**Shipped:** The Last Detective (Stage 2) · Living Village (Stage 3A).
+**Next:** Tactical Command (Stage 3B). After that: The Last Outpost,
+Rumors & Kingdoms.
+
+The launcher presents unshipped games as planned modules; Decideverse
+never ships fake playables. Each design below reuses the shared framework
+unchanged — a new game is a module folder, a registry entry, pure
+scenario/decision files and tests (see GAME-MODULES.md).
 
 ## Stage 3 — Living Village — **SHIPPED (Stage 3A)**
 *Autonomous villagers with memory, needs and relationships. Playable today; design and
@@ -23,7 +27,7 @@ implemented rules: LIVING-VILLAGE.md. Tactical Command (below) is the remaining 
   "today in the village" digest.
 - Deterministic day seeds; replayable days.
 
-## Stage 3 — Tactical Command
+## Stage 3B — Tactical Command — **NEXT**
 *Squad-level coordination under time pressure.*
 
 - Grid-based engagements: squad members with roles/loadouts/readiness, threats
@@ -61,9 +65,10 @@ implemented rules: LIVING-VILLAGE.md. Tactical Command (below) is the remaining 
 
 - Persist sessions/history (localStorage or IndexedDB) and export decision
   logs as JSON.
-- Wire the two Stage 2 suites into the existing CI pipeline as new jobs
-  (Node suite first, then the Playwright E2E) — additive, no changes to
-  existing jobs.
+- ~~Wire the two Stage 2 suites into the existing CI pipeline as new jobs~~ —
+  **done**: Jobs H (Node) and I (browser E2E) run the Decideverse suites on
+  every push, additive to the engine jobs; Stage 3A extended both with the
+  Living Village coverage.
 - Case editor for the detective (author alternative evidence sets) to
   demonstrate that engine output follows submitted evidence, not hardcoded
   answers.

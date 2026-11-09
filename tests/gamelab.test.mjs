@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tamer Osman */
 /*
- * gamelab.test.mjs - Stage 2 Node suite for OmniDecide GameLab.
+ * gamelab.test.mjs - Stage 2 Node suite for the Decideverse GameLab.
  *
  *   node tests/gamelab.test.mjs
  *

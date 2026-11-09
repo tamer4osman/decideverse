@@ -21,6 +21,15 @@ evidence. Disputes may open between villagers; the steward can mediate them
 digest (`extract`). After day 7 the village receives a report ending
 (thriving / settled / struggling).
 
+### 1.1 Screenshots
+
+Fresh captures from the Stage 3A browser run — the same shell the CI
+browser jobs exercise (`gamelab/docs/img/`):
+
+| Day briefing — the steward's starting view | Ending report — after day 7 |
+|---|---|
+| ![Living Village day briefing with six named villagers](img/gamelab-village-briefing.png) | ![Living Village seven-day ending report](img/gamelab-village-report.png) |
+
 ## 2. Scenario data
 
 ### 2.1 Villagers (fixed roster, order matters for tie-breaks)
