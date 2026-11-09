@@ -3,6 +3,39 @@
 All notable changes to OmniDecide WASM are documented here. The format
 is based on Keep a Changelog; versioning is semver.
 
+## [Unreleased] — Stage 3A: Living Village
+
+Second playable Decideverse game on the same kernel and framework.
+
+### Added
+- **Living Village** (`gamelab/js/games/living-village/`, registered playable):
+  six villagers with private memory and a relationship web stewarded over
+  seven deterministic days. Every evening each villager's next goal is a real
+  OmniDecide `choice` request built from their day-stamped memory, needs and
+  the village stores; disputes are weighed by `compare` against the shared
+  chronicle; each day is summarized by an `extract` digest (display-only).
+- Declared engine-to-gameplay rules **R1** (the selected goal is pursued; the
+  reducer applies its objective effects), **R2** (mediation closes disputes;
+  the supported claim gains belonging, "tie" splits it) and **R3**
+  (display-only digest) — each tested both ways against the real kernel.
+- `tests/gamelab_village.test.mjs` — 156 checks incl. the output-follows-input
+  proof (contrasting evidence flips the kernel's choice), byte-identical
+  replay of full runs, and module-level action-log/seed/replay semantics.
+- Browser E2E extended to 121 checks with the Living Village launch-play-
+  inspect-report-reset-replay flow and the 390px workspace guard.
+
+### Fixed
+- **Sim views overflowed phones** (`gamelab/styles/gamelab.css`): nowrap feed
+  labels carried their full intrinsic width into the workspace feed panel, so
+  both playable games' sim views overflowed at 390px (the detective view by
+  241px — only the dashboard had ever been checked). Labels now wrap below
+  720px; desktop rendering is unchanged.
+
+### CI
+- Job H runs the village suite and uploads `village-node-report.json`; Job G's
+  missing-report gate blocks the release without it. Workflow lint grew from
+  62 to **71** structural checks. No new jobs; Stage 1 jobs A–G untouched.
+
 ## [Unreleased] — Decideverse rebrand
 
 The GameLab application is now branded **Decideverse** — a laboratory for a

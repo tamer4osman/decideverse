@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Product renamed: "OmniDecide GameLab" is now "Decideverse" (see CHANGELOG). -->
 <!-- SPDX-FileCopyrightText: 2026 Tamer Osman -->
 
 # Stage 2.1 Completion Report — GameLab Hardening

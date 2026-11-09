@@ -81,3 +81,26 @@ Character Database; do not edit them by hand.
 
 By submitting a contribution you agree that it is licensed under the Apache
 License 2.0, as described in section 5 of [LICENSE](LICENSE).
+
+## Decideverse application tests (what CI runs)
+
+For changes under `gamelab/`, `tests/` or `.github/workflows/`, the local
+commands equal the hosted CI steps (Jobs H and I; Stage 1 jobs A–G cover the
+kernel and are documented above):
+
+```sh
+cd tests && npm ci && cd ..
+npx playwright install chromium          # Job I only (pinned 1.57.0)
+node tests/omnidecide.test.mjs           # 78 checks
+node tests/adapter_lifecycle.test.mjs    # 158 checks
+node tests/gamelab.test.mjs              # 156 checks
+node tests/gamelab_state.test.mjs        # 53 checks
+node tests/gamelab_village.test.mjs      # 156 checks (Stage 3A)
+python3 scripts/ci-workflow-lint.py      # 71 structural checks
+node tests/browser_check.mjs             # 29 checks
+node tests/gamelab_browser_check.mjs     # 121 checks
+```
+
+Every suite exits non-zero on any failure and writes a machine-readable
+report under `build/`. Job G blocks the release when any required report is
+missing from the uploaded artifacts.
