@@ -1,0 +1,53 @@
+/*
+ * village.css — Living Village (Stage 3A) view styles.
+ *
+ * Reuses the shared design language (cards, meters, panel titles); the
+ * additions here are the villager card grid, needs meters and the
+ * chronicle panel. Responsive: the grid collapses to one column under
+ * 720px and never introduces horizontal overflow at 390px.
+ */
+
+/* Steward action row */
+.lv-steward-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+}
+
+/* Villager cards */
+.lv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.lv-villager .meter { margin: .25rem 0; }
+.lv-villager .lv-goal { min-height: 2.2em; }
+
+.lv-memory summary {
+    cursor: pointer;
+    color: var(--muted, #8b98a5);
+    font-size: .85rem;
+}
+
+.lv-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-top: .5rem;
+}
+
+/* Dispute + chronicle panels */
+.lv-dispute { margin: 1rem 0; }
+.lv-chronicle { margin: 1rem 0; }
+.lv-chronicle .extract-list { margin: .4rem 0 0; }
+
+/* Replay report host */
+.lv-replay-report-host { margin-top: 1rem; }
+
+@media (max-width: 720px) {
+    .lv-grid { grid-template-columns: 1fr; }
+    .lv-steward-actions { gap: .4rem; }
+}

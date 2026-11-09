@@ -3,9 +3,9 @@
 /*
  * games/index.js - GameLab game-module registration.
  *
- * Stage 2 registers The Last Detective as the single playable module
- * and the four remaining planned games as roadmap scopes. Adding a
- * game later = one import + one registerGame() call.
+ * Stage 2 registered The Last Detective as the first playable module;
+ * Stage 3 adds Living Village. The remaining planned games are roadmap
+ * scopes. Adding a game = one import + one registerGame() call.
  */
 
 import { registerGame } from '../core/registry.js';
@@ -13,6 +13,8 @@ import { createDetectiveModule } from './detective/module.js';
 import {
     DEFAULT_SEED, CASE_META
 } from './detective/scenario.js';
+import { createLivingVillageModule } from './living-village/module.js';
+import { DEFAULT_SEED as VILLAGE_SEED } from './living-village/scenario.js';
 
 const ICONS = {
     detective: `<svg viewBox="0 0 64 64" width="42" height="42" aria-hidden="true">
@@ -48,6 +50,7 @@ registerGame({
     name: 'The Last Detective',
     tagline: 'Evidence-driven mystery at the Aldermoor Museum',
     status: 'playable',
+    playableStage: 'Stage 2',
     accent: '#d4a24e',
     icon: ICONS.detective,
     defaultSeed: DEFAULT_SEED,
@@ -72,20 +75,27 @@ registerGame({
     id: 'living-village',
     name: 'Living Village',
     tagline: 'Autonomous villagers with memory, needs and relationships',
-    status: 'planned',
+    status: 'playable',
+    playableStage: 'Stage 3',
     accent: '#5fae6f',
-    plannedFor: 'Planned — Stage 3',
     icon: ICONS.village,
-    blurb: 'A village simulation where NPCs keep private memory and relationships, generate needs and ' +
-        'goals from their state, and let OmniDecide arbitrate which goal a villager pursues next — ' +
-        'with every arbitration inspectable.',
+    defaultSeed: VILLAGE_SEED,
+    introduction: {
+        kicker: 'Seven days · stage 3 village simulation',
+        title: 'Steward a village whose daily goals are kernel-arbitrated'
+    },
+    blurb: 'Steward six villagers over seven days: host gatherings, assign tasks, mediate disputes and ' +
+        'share news. Each evening every villager\'s next goal is a real OmniDecide choice request built ' +
+        'from their memory and needs; disputes are weighed against the chronicle (compare) and the day ' +
+        'is summarized by extract. The reducer applies every effect; the engine advises through rules R1-R3.',
     features: [
-        'Villager memory graph and relationship web',
-        'Need/goal generation from world state',
-        'Daily schedule arbitration via the choice primitive',
-        'Village chronicle built from the event feed',
-        'Deterministic day seeds and replay'
-    ]
+        'Six villagers with private memory and a relationship web',
+        'Daily goal arbitration via the choice primitive (rule R1)',
+        'Dispute mediation via compare against the chronicle (rule R2)',
+        'Chronicle digest via extract, display-only (rule R3)',
+        'Deterministic day weather, full reset and byte-identical replay'
+    ],
+    create: () => createLivingVillageModule()
 });
 
 registerGame({

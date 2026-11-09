@@ -78,7 +78,7 @@ export const about = {
             return el('section', { class: 'card versions-card' },
                 el('h2', {}, 'Versions'),
                 el('dl', { class: 'kv' },
-                    el('dt', {}, 'Decideverse stage'), el('dd', {}, 'Stage 2 — application + The Last Detective'),
+                    el('dt', {}, 'Decideverse stage'), el('dd', {}, 'Stage 3 — two playable games'),
                     el('dt', {}, 'Integration'), el('dd', {}, 'omnidecide-wasm 1.0.0'),
                     el('dt', {}, 'Kernel'), el('dd', {}, `OmniDecide C kernel ${adapter.kernelVersion || '(initializing…)'}`),
                     el('dt', {}, 'Backend'), el('dd', {}, adapter.backend || '—'),

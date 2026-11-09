@@ -15,7 +15,8 @@ No Stage 1 test was weakened or skipped.
 | Stage 1 Node functional | `node tests/omnidecide.test.mjs` | kernel integration, primitives, determinism, errors, unicode | **78/78** |
 | Stage 1 browser acceptance | `node tests/browser_check.mjs` | playground over Playwright/Chromium | **29/29** |
 | Stage 2 Node | `node tests/gamelab.test.mjs` | framework + adapter + scenario + full game path vs the **real kernel** | **156/156** |
-| Stage 2 browser E2E | `node tests/gamelab_browser_check.mjs` | the complete GameLab product flow + 2.1 + 2.1.1 regressions | **97/97** |
+| Stage 2 browser E2E | `node tests/gamelab_browser_check.mjs` | the complete GameLab product flow (detective **and** Living Village) + 2.1 + 2.1.1 + 390px regressions | **121/121** |
+| Stage 3A Living Village Node | `node tests/gamelab_village.test.mjs` | village reducer determinism, steward paths, rules R1–R3 both ways, output-follows-input, playthroughs, byte-identical replay, module-level action-log/seed/replay semantics — all vs the **real kernel** | **156/156** |
 | Stage 2.1 adapter lifecycle | `node tests/adapter_lifecycle.test.mjs` | init/recreate/shutdown/error paths, **cleanup ownership & recovery**, handle accounting vs the **real WASM module** | **158/158** |
 | Stage 2.1 action tracking + seed/replay | `node tests/gamelab_state.test.mjs` | the REAL game module in a DOM shim, real session, real engine | **53/53** |
 
@@ -100,6 +101,7 @@ node tests/omnidecide.test.mjs
 node tests/gamelab.test.mjs
 node tests/adapter_lifecycle.test.mjs
 node tests/gamelab_state.test.mjs
+node tests/gamelab_village.test.mjs
 node tests/browser_check.mjs
 node tests/gamelab_browser_check.mjs
 # or: ./scripts/verify-release.sh   (Stage 1 gates, unchanged)

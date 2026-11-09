@@ -53,7 +53,7 @@ const shell = el('div', { class: 'shell' },
     el('footer', { class: 'footer' },
         el('span', {}, 'Decideverse — powered by omnidecide-wasm 1.0.0 · deterministic decisions in the browser'),
         el('span', { class: 'footer-links' },
-            el('a', { href: 'https://github.com/tamer4osman/omnidecide-wasm-1.0.0' }, 'repository'),
+            el('a', { href: 'https://github.com/tamer4osman/decideverse' }, 'repository'),
             el('a', { href: '#/about' }, 'about the engine'))));
 
 app.append(shell);

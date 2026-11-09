@@ -3,13 +3,14 @@
 
 # Roadmap — the four planned games
 
-The launcher presents these as planned modules; GameLab never ships fake
+The launcher presents these as planned modules; Decideverse never ships fake
 playables. Each design below reuses the shared framework unchanged — a new
 game is a module folder, a registry entry, pure scenario/decision files and
 tests (see GAME-MODULES.md).
 
-## Stage 3 — Living Village
-*Autonomous villagers with memory, needs and relationships.*
+## Stage 3 — Living Village — **SHIPPED (Stage 3A)**
+*Autonomous villagers with memory, needs and relationships. Playable today; design and
+implemented rules: LIVING-VILLAGE.md. Tactical Command (below) is the remaining Stage 3 scope.*
 
 - Villager agents with private memory graphs and a relationship web that
   changes through interactions.

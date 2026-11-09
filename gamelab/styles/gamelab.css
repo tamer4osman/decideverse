@@ -371,7 +371,7 @@ code, .mono { font-family: var(--mono); font-size: .92em; }
 .feed-type.t-world { color: var(--text-faint); }
 .feed-type.t-session { color: var(--text-faint); }
 .feed-type.t-location { color: var(--blue); }
-.feed-label { color: var(--text-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-label { color: var(--text-dim); flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .actor-list { list-style: none; margin: .3rem 0 0; padding: 0; }
 .actor { padding: .3rem 0; border-bottom: 1px dashed rgba(38, 49, 60, .7); display: flex; flex-direction: column; }
@@ -498,6 +498,10 @@ code, .mono { font-family: var(--mono); font-size: .92em; }
 
 @media (max-width: 720px) {
     .topbar { flex-wrap: wrap; gap: .5rem; padding: .55rem .8rem; }
+    /* nowrap feed labels carry their full width into the flex container's
+     * intrinsic min-content and overflow phones; wrapping fixes the 390px
+     * layout without changing the desktop ellipsis. */
+    .feed-label { white-space: normal; }
     /* flex-basis must be 100%: the base rule's `flex: 1` (basis 0%) otherwise
      * overrides width and collapses the nav to ~12px on phones. */
     .main-nav { order: 3; flex: 1 1 100%; width: 100%; overflow-x: auto; flex-wrap: nowrap; }

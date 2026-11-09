@@ -3,8 +3,8 @@
 /*
  * launcher.js - simulation launcher.
  *
- * Presents the five planned GameLab games. Only The Last Detective is
- * playable in Stage 2; the other four render as honest "Planned"
+ * Presents the five Decideverse games. Two are playable (The Last
+ * Detective, Living Village); the other three render as honest "Planned"
  * modules with their roadmap scope - clicking one opens the roadmap
  * detail, never a fake playable version.
  */
@@ -26,8 +26,8 @@ export const launcher = {
                 el('h1', {}, 'Simulation launcher'),
                 el('p', { class: 'lead' },
                     'Five games share one simulation framework and one real decision engine. ' +
-                    'Stage 2 ships The Last Detective as the first complete playable module; ' +
-                    'the other four are planned scopes, not playable stubs.')));
+                    'The Last Detective and Living Village are playable today; ' +
+                    'the other three are planned scopes, not playable stubs.')));
 
             const grid = el('div', { class: 'launcher-grid' });
             for (const g of allGames()) grid.append(gameCard(g));
@@ -50,7 +50,7 @@ export const launcher = {
                         (g.features || []).map((f) => el('li', {}, f)))),
                 el('div', { class: 'game-card-foot' },
                     el('span', { class: `status-pill st-${playable ? 'ready' : 'planned'}` },
-                        playable ? 'Playable — Stage 2' : (g.plannedFor || 'Planned')),
+                        playable ? `Playable — ${g.playableStage || 'Stage 2'}` : (g.plannedFor || 'Planned')),
                     playable
                         ? el('a', { class: 'btn primary', href: `#/sim/${g.id}` }, 'Open simulation')
                         : el('a', { class: 'btn ghost', href: `#/launcher?planned=${g.id}` }, 'Scope')));

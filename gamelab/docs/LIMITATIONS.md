@@ -68,3 +68,16 @@
   wiring them into the existing seven-job pipeline is left to the maintainer
   (see ROADMAP.md) to avoid unrelated changes to the working Stage 2 pipeline
   contract.
+
+## Living Village (Stage 3A)
+
+- The kernel arbitrates each villager's daily goal by **lexical support** between the
+  authored option wording and the villager's memory/needs text — it does not simulate
+  hunger, friendship or work. Its choices can converge village-wide (e.g. many villagers
+  gathering firewood on the same day); that is honest lexical behavior, not coordination.
+- Rule R1 means engine choices directly set villager goals. A poor evidence text can
+  therefore drive the village into need collapse — the report says so honestly.
+- Dispute mediation (R2) weighs authored one-sentence claims against the chronicle;
+  a "tie" is a real possible verdict and resolves the dispute without a winner.
+- The chronicle digest (R3) is display-only and never mutates village state.
+- Weather is the only seed-dependent simulation input; it shifts warmth decay only.
