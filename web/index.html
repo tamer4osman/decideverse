@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniDecide WASM Playground</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+    <h1>OmniDecide WASM Playground</h1>
+    <div id="status-bar">
+        <span id="status" class="status-pill loading">initializing</span>
+        <span id="engine-version" class="meta"></span>
+        <span id="engine-backend" class="meta"></span>
+        <span id="engine-count" class="meta"></span>
+    </div>
+</header>
+
+<main>
+    <section id="controls">
+        <div class="preset-row">
+            <button id="btn-quickstart">Run README quickstart</button>
+            <button id="btn-unicode">Run 中文 preset</button>
+            <button id="btn-invalid">Run invalid input</button>
+            <button id="btn-determinism">Determinism check (5x)</button>
+            <button id="btn-replay">Replay last request</button>
+            <button id="btn-benchmark">Run benchmark</button>
+            <button id="btn-release" class="danger">Release engine</button>
+        </div>
+        <p class="hint">
+            Every decision runs through the real OmniDecide WebAssembly module
+            (dist/omnidecide.wasm). No JavaScript fallback exists.
+        </p>
+    </section>
+
+    <section id="output">
+        <div id="error-box" class="hidden"></div>
+        <div id="decision" class="hidden">
+            <div class="decision-head">
+                <span id="decision-primitive" class="pill"></span>
+                <span id="decision-winner"></span>
+                <span id="decision-confidence" class="pill"></span>
+            </div>
+            <h3>Probability distribution</h3>
+            <div id="distribution"></div>
+            <details id="meta-details">
+                <summary>Decision metadata (truncation, language, work accounting)</summary>
+                <pre id="meta-pre"></pre>
+            </details>
+            <details id="envelope-details">
+                <summary>Raw envelope (byte-identical to the native build)</summary>
+                <pre id="envelope-pre"></pre>
+            </details>
+        </div>
+        <div id="determinism-result" class="hidden"></div>
+        <div id="benchmark-result" class="hidden"></div>
+    </section>
+</main>
+
+<footer>
+    <span id="footer-note"></span>
+</footer>
+
+<script src="../dist/omnidecide.js"></script>
+<script src="../js/omnidecide.js"></script>
+<script src="../js/benchmark.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
